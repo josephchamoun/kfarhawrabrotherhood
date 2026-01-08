@@ -1,10 +1,13 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from "react";
 import api from "../api/api";
+
+import type { User } from "../types";
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  onCreated: () => void;
+  onCreated: (user: User) => void;
 }
 
 export default function AddUserModal({ open, onClose, onCreated }: Props) {
@@ -15,6 +18,7 @@ export default function AddUserModal({ open, onClose, onCreated }: Props) {
     password: "",
     is_global_admin: false,
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!open) return null;
 
@@ -28,18 +32,25 @@ export default function AddUserModal({ open, onClose, onCreated }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
 
     try {
-      await api.post("/adduser", form, {
+      const res = await api.post("/adduser", form, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("access_token")}`,
         },
       });
 
-      onCreated();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      onCreated({
+        ...res.data,
+        sections: [],
+      });
     } catch (err: any) {
       alert(err.response?.data?.message || "Failed to create user");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -105,9 +116,19 @@ export default function AddUserModal({ open, onClose, onCreated }: Props) {
           </button>
           <button
             type="submit"
-            className="bg-blue-600 text-white px-4 py-2 rounded"
+            disabled={isSubmitting}
+            className={`flex items-center justify-center gap-2 px-4 py-2 rounded
+    text-white transition
+    ${
+      isSubmitting
+        ? "bg-blue-400 cursor-not-allowed"
+        : "bg-blue-600 hover:bg-blue-700"
+    }`}
           >
-            Create
+            {isSubmitting && (
+              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            )}
+            {isSubmitting ? "Creating..." : "Create"}
           </button>
         </div>
       </form>

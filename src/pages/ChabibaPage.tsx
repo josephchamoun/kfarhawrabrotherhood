@@ -2,68 +2,58 @@ import { useEffect, useState } from "react";
 import api from "../api/api";
 import type { User, Role } from "../types";
 import Navbar from "../components/Navbar";
-import { TrashIcon } from "@heroicons/react/24/outline";
 
 const CHABIBA_SECTION_ID = 1;
+const NORMAL_ROLE_ID = 10;
 
-// Roles allowed in Chabiba
-const ALL_ROLES: Role[] = [
-  { id: 1, name: "Chabiba President" },
-  { id: 2, name: "wakil tanchi2a" },
-  { id: 3, name: "moustashar" },
-  { id: 7, name: "Wakil Risele" },
-  { id: 8, name: "Wakil E3lem" },
-  { id: 9, name: "Amin Ser" },
-  { id: 10, name: "Amin sandou2" },
-  { id: 11, name: "Ne2b al Ra2is" },
+const ROLES: Role[] = [
+  { id: 2, name: "Chabiba President" },
+  { id: 11, name: "Wakil Tanchi2a" },
+  { id: 12, name: "Moustashar" },
+  { id: 5, name: "Wakil Risele" },
+  { id: 6, name: "Wakil E3lem" },
+  { id: 7, name: "Amin Ser" },
+  { id: 8, name: "Amin Sandou2" },
+  { id: 9, name: "Ne2b Al Ra2is" },
 ];
 
 export default function ChabibaPage() {
   const [users, setUsers] = useState<User[]>([]);
-  const [loadingUserId, setLoadingUserId] = useState<number | null>(null);
-  const [roles] = useState<Role[]>(ALL_ROLES);
+  const [loading, setLoading] = useState(false);
+  const [assigningUserId, setAssigningUserId] = useState<number | null>(null);
 
-  const loggedInUser: User | null = JSON.parse(
-    localStorage.getItem("user_info") || "null"
-  );
+  const loggedInUser = JSON.parse(localStorage.getItem("user_info") || "null");
   const isAdmin = loggedInUser?.is_global_admin;
 
-  const fetchUsers = () => {
-    api
-      .get("/chabiba-role", {
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get("/chabiba-role", {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("access_token")}`,
         },
-      })
-      .then((res) => setUsers(res.data))
-      .catch(console.error);
+      });
+      setUsers(res.data);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     fetchUsers();
   }, []);
 
-  // Delete user
-  const handleDeleteUser = async (userId: number) => {
-    if (!window.confirm("Are you sure you want to delete this user?")) return;
+  const takenRoleIds = users
+    .map(
+      (u) =>
+        u.sections?.find((s) => s.id === CHABIBA_SECTION_ID)?.pivot?.role_id
+    )
+    .filter((id) => id && id !== NORMAL_ROLE_ID);
 
+  const assignRole = async (userId: number, roleId: number) => {
     try {
-      await api.delete(`/user/delete/${userId}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-        },
-      });
-      setUsers((prev) => prev.filter((u) => u.id !== userId));
-    } catch (err) {
-      console.error(err);
-      alert("Failed to delete user.");
-    }
-  };
+      setAssigningUserId(userId);
 
-  // Assign role
-  const handleAssignRole = async (userId: number, roleId: number) => {
-    try {
-      setLoadingUserId(userId);
       await api.post(
         "/chabiba/assign-role",
         {
@@ -74,120 +64,42 @@ export default function ChabibaPage() {
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-            Accept: "application/json",
-            "Content-Type": "application/json",
           },
         }
       );
+
       fetchUsers();
-    } catch (err) {
-      console.error(err);
-      alert("Failed to assign role.");
     } finally {
-      setLoadingUserId(null);
+      setAssigningUserId(null);
     }
   };
 
-  // Remove role
-  const handleRemoveRole = async (userId: number) => {
+  const removeRole = async (userId: number) => {
     try {
-      setLoadingUserId(userId);
+      setAssigningUserId(userId);
+
       await api.post(
         "/chabiba/remove-role",
-        { user_id: userId, section_id: CHABIBA_SECTION_ID },
+        {
+          user_id: userId,
+          section_id: CHABIBA_SECTION_ID,
+        },
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-            Accept: "application/json",
-            "Content-Type": "application/json",
           },
         }
       );
+
       fetchUsers();
-    } catch (err) {
-      console.error(err);
-      alert("Failed to remove role.");
     } finally {
-      setLoadingUserId(null);
+      setAssigningUserId(null);
     }
   };
 
-  // Compute which roles are already assigned in Chabiba
-  const assignedRoleIds = users
-    .map(
-      (u) =>
-        u.sections?.find((s) => s.id === CHABIBA_SECTION_ID)?.pivot?.role_id
-    )
-    .filter(Boolean) as number[];
-
-  const renderUser = (u: User) => {
-    const chabibaSection = u.sections?.find((s) => s.id === CHABIBA_SECTION_ID);
-    const currentRoleId = chabibaSection?.pivot?.role_id;
-    const currentRoleName =
-      roles.find((r) => r.id === currentRoleId)?.name || "No role";
-
-    // Roles available to assign (exclude already assigned except current)
-    const availableRoles = roles.filter(
-      (r) => !assignedRoleIds.includes(r.id) || r.id === currentRoleId
-    );
-
-    return (
-      <div
-        key={u.id}
-        className="group bg-white border border-gray-200 p-4 rounded-lg mb-3
-                   shadow-sm hover:shadow-md hover:border-blue-200 transition flex justify-between items-center"
-      >
-        <div>
-          <p className="font-semibold text-gray-800">{u.name}</p>
-          <p className="text-sm text-gray-500">{currentRoleName}</p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {isAdmin && (
-            <button
-              className="text-red-500 hover:text-red-700"
-              onClick={() => handleDeleteUser(u.id)}
-              title="Delete user"
-              disabled={loadingUserId === u.id}
-            >
-              <TrashIcon className="w-5 h-5" />
-            </button>
-          )}
-
-          {isAdmin && (
-            <>
-              {currentRoleId ? (
-                <button
-                  className="bg-red-500 text-white px-2 py-1 rounded text-sm hover:bg-red-600"
-                  onClick={() => handleRemoveRole(u.id)}
-                  disabled={loadingUserId === u.id}
-                >
-                  Remove Role
-                </button>
-              ) : (
-                <select
-                  className="border px-2 py-1 rounded text-sm"
-                  value=""
-                  onChange={(e) =>
-                    handleAssignRole(u.id, Number(e.target.value))
-                  }
-                  disabled={loadingUserId === u.id}
-                >
-                  <option value="" disabled>
-                    Assign Role
-                  </option>
-                  {availableRoles.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-    );
+  // 🚧 BACKEND LATER
+  const removeFromSection = async (userId: number) => {
+    alert(`Remove user ${userId} from section (backend later)`);
   };
 
   return (
@@ -195,24 +107,85 @@ export default function ChabibaPage() {
       <Navbar />
 
       <div className="max-w-5xl mx-auto p-6">
-        <h1 className="text-3xl font-bold mb-8 text-center text-gray-800">
-          Chabiba <span className="text-gray-400 text-2xl">شبيبة</span>
+        <h1 className="text-3xl font-bold mb-6 text-center">
+          Chabiba <span className="text-gray-400">شبيبة</span>
         </h1>
 
-        <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
-          <div className="flex justify-between items-center mb-5">
-            <h2 className="text-xl font-bold text-gray-800">Members</h2>
-          </div>
+        <div className="bg-white p-6 rounded-xl shadow">
+          <h2 className="font-bold mb-4">Members</h2>
 
-          <div>
-            {users.length ? (
-              users.map(renderUser)
-            ) : (
-              <p className="text-gray-400 text-sm text-center py-6">
-                No users in Chabiba
-              </p>
-            )}
-          </div>
+          {loading ? (
+            <p className="text-center">Loading...</p>
+          ) : (
+            users.map((user) => {
+              const section = user.sections?.find(
+                (s) => s.id === CHABIBA_SECTION_ID
+              );
+
+              const roleId = section?.pivot?.role_id ?? NORMAL_ROLE_ID;
+
+              const roleName =
+                ROLES.find((r) => r.id === roleId)?.name || "Normal Member";
+
+              const isAssigning = assigningUserId === user.id;
+
+              return (
+                <div
+                  key={user.id}
+                  className="border p-4 mb-2 rounded flex justify-between items-center"
+                >
+                  <div>
+                    <p className="font-semibold">{user.name}</p>
+                    <p className="text-sm text-gray-500">{roleName}</p>
+                  </div>
+
+                  {isAdmin && (
+                    <div className="flex gap-3 items-center">
+                      {isAssigning ? (
+                        <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                      ) : roleId === NORMAL_ROLE_ID ? (
+                        <select
+                          disabled={assigningUserId !== null}
+                          className="border px-2 py-1 rounded text-sm"
+                          defaultValue=""
+                          onChange={(e) =>
+                            assignRole(user.id, Number(e.target.value))
+                          }
+                        >
+                          <option value="" disabled>
+                            Assign Role
+                          </option>
+                          {ROLES.filter(
+                            (r) => !takenRoleIds.includes(r.id)
+                          ).map((r) => (
+                            <option key={r.id} value={r.id}>
+                              {r.name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <button
+                          disabled={assigningUserId !== null}
+                          onClick={() => removeRole(user.id)}
+                          className="text-red-500 text-sm hover:underline disabled:opacity-50"
+                        >
+                          Remove Role
+                        </button>
+                      )}
+
+                      <button
+                        disabled={assigningUserId !== null}
+                        onClick={() => removeFromSection(user.id)}
+                        className="text-gray-500 text-sm hover:underline disabled:opacity-50"
+                      >
+                        Remove from Section
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
     </div>

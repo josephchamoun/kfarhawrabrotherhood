@@ -156,8 +156,8 @@ export default function UsersPage() {
         <AddUserModal
           open={showAddUser}
           onClose={() => setShowAddUser(false)}
-          onCreated={() => {
-            fetchUsers();
+          onCreated={(newUser) => {
+            setUsers((prev) => [newUser, ...prev]);
             setShowAddUser(false);
           }}
         />

@@ -22,21 +22,27 @@ export default function ForsanPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUserId, setLoadingUserId] = useState<number | null>(null);
   const [roles] = useState<Role[]>(ALL_ROLES);
+  const [isLoading, setIsLoading] = useState(false);
 
   const loggedInUser: User | null = JSON.parse(
     localStorage.getItem("user_info") || "null"
   );
   const isAdmin = loggedInUser?.is_global_admin;
 
-  const fetchUsers = () => {
-    api
-      .get("/forsan-role", {
+  const fetchUsers = async () => {
+    try {
+      setIsLoading(true);
+      const res = await api.get("/forsan-role", {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("access_token")}`,
         },
-      })
-      .then((res) => setUsers(res.data))
-      .catch(console.error);
+      });
+      setUsers(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -203,15 +209,21 @@ export default function ForsanPage() {
             <h2 className="text-xl font-bold text-gray-800">Members</h2>
           </div>
 
-          <div>
-            {users.length ? (
-              users.map(renderUser)
-            ) : (
-              <p className="text-gray-400 text-sm text-center py-6">
-                No users in Forsan
-              </p>
-            )}
-          </div>
+          {isLoading ? (
+            <div className="flex justify-center items-center py-20">
+              <span className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></span>
+            </div>
+          ) : (
+            <div>
+              {users.length ? (
+                users.map(renderUser)
+              ) : (
+                <p className="text-gray-400 text-sm text-center py-6">
+                  No users in Forsan
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
