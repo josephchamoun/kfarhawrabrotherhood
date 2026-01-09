@@ -43,6 +43,7 @@ export interface User {
   sections?: Section[];          
   role?: Role;                  
   creator?: User | null;
+  chabiba_roles: ChabibaRole[];
 }
 
 
@@ -71,3 +72,11 @@ export type Event = {
   total_revenue: string;
   creator: Creator;
 };
+
+
+export interface ChabibaRole {
+  id: number;
+  role_id: number;
+  start_date: string;
+  end_date: string | null;
+}
