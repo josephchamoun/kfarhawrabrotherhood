@@ -20,6 +20,7 @@ export interface Section {
 export interface Role {
   id: number;
   name: string;
+  nameAr: string;
 }
 
 export interface UserForm {
