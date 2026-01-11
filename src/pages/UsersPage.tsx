@@ -5,11 +5,13 @@ import Navbar from "../components/Navbar";
 import AddUserModal from "../components/AddUserModal";
 import AddToSectionModal from "../components/AddToSectionModal";
 import { TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { useNavigate } from "react-router-dom";
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [showAddUser, setShowAddUser] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const navigate = useNavigate();
 
   const loggedUser: User | null = JSON.parse(
     localStorage.getItem("user_info") || "null"
@@ -84,23 +86,30 @@ export default function UsersPage() {
         </div>
 
         <div className="flex gap-2">
-          {/* Delete button (only global admins can delete other users) */}
+          {!isAdmin && (
+            <>
+              <button
+                className="bg-gray-600 hover:bg-gray-700 text-white px-2 py-1 rounded text-sm"
+                onClick={() => navigate(`/users/${u.id}`)}
+              >
+                View
+              </button>
+
+              <button
+                className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-sm"
+                onClick={() => setSelectedUserId(u.id)}
+              >
+                Add to Section
+              </button>
+            </>
+          )}
+
           {!isAdmin && isGlobalAdmin && (
             <button
-              className="text-red-600 hover:text-red-800 flex items-center gap-1"
+              className="text-red-600 hover:text-red-800"
               onClick={() => handleDeleteUser(u.id)}
             >
               <TrashIcon className="w-5 h-5" />
-            </button>
-          )}
-
-          {/* Add to Section button */}
-          {!isAdmin && (
-            <button
-              className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-sm"
-              onClick={() => setSelectedUserId(u.id)}
-            >
-              Add to Section
             </button>
           )}
         </div>

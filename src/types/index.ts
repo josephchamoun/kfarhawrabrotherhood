@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export interface Pivot {
   user_id: number;
   section_id: number;
@@ -45,6 +46,7 @@ export interface User {
   role?: Role;                  
   creator?: User | null;
   chabiba_roles: ChabibaRole[];
+  section_roles?: any[];
 }
 
 

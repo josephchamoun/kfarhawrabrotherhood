@@ -7,6 +7,9 @@ import LoginPage from "../pages/LoginPage";
 import ChabibaPage from "../pages/ChabibaPage";
 import ForsanPage from "../pages/ForsanPage";
 import Tala2e3Page from "../pages/Tala2e3Page";
+import UserProfilePage from "../pages/UserProfilePage";
+import MyProfilePage from "../pages/MyProfilePage";
+
 import ProtectedRoute from "../components/ProtectedRoute";
 
 export default function AppRouter() {
@@ -16,6 +19,8 @@ export default function AppRouter() {
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/users" element={<UsersPage />} />
+          <Route path="/users/:id" element={<UserProfilePage />} />
+          <Route path="/profile" element={<MyProfilePage />} />
           <Route path="/events" element={<EventsPage />} />
           <Route path="/shops" element={<ShopsPage />} />
           <Route path="/chabiba" element={<ChabibaPage />} />

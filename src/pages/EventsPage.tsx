@@ -23,7 +23,13 @@ export default function EventsPage() {
 
   useEffect(() => {
     api
-      .get("/events")
+      .get(`/events`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+      })
       .then((res) => setEvents(res.data))
       .catch(() => setError("Failed to load events"))
       .finally(() => setLoading(false));
