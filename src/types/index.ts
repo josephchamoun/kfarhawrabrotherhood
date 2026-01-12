@@ -74,12 +74,24 @@ export type Event = {
   total_spent: string;
   total_revenue: string;
   creator: Creator;
+  notes: string;
+  drive_Link: string;
+  sections: Section[];
 };
 
 
 export interface ChabibaRole {
   id: number;
   role_id: number;
+  start_date: string;
+  end_date: string | null;
+}
+
+export interface UserRole {
+  id: number;
+  role_id: number;
+  role_name: string;
+  section_id: number;
   start_date: string;
   end_date: string | null;
 }
