@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import api from "../api/api";
 import Navbar from "../components/Navbar";
+import AddEventModal from "../components/AddEventModal";
+
 import { TrashIcon, PencilIcon, PlusIcon } from "@heroicons/react/24/solid";
 
 import type { Event, UserRole } from "../types";
@@ -27,6 +29,7 @@ export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [isAddOpen, setIsAddOpen] = useState(false);
 
   // ---------------------------
   // Fetch events
@@ -133,8 +136,6 @@ export default function EventsPage() {
   const canShowAddButton =
     isHighAdmin() ||
     isPresidentOrNe2b(1) ||
-    hasRole(AMIN_SER, 1) ||
-    hasRole(AMIN_SANDOU2, 1) ||
     isPresidentOrNe2b(2) ||
     isPresidentOrNe2b(3);
 
@@ -150,7 +151,7 @@ export default function EventsPage() {
         {canShowAddButton && (
           <button
             className="bg-green-600 text-white px-4 py-2 rounded mb-6 flex items-center gap-1"
-            onClick={() => alert("Open Add Event modal")}
+            onClick={() => setIsAddOpen(true)}
           >
             <PlusIcon className="w-5 h-5" />
             Add Event
@@ -215,6 +216,13 @@ export default function EventsPage() {
           ))}
         </div>
       </div>
+      <AddEventModal
+        open={isAddOpen}
+        onClose={() => setIsAddOpen(false)}
+        onCreated={(newEvent) => {
+          setEvents((prev) => [newEvent, ...prev]);
+        }}
+      />
     </div>
   );
 }
