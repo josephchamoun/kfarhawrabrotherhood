@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import api from "../api/api";
 import Navbar from "../components/Navbar";
 import AddEventModal from "../components/AddEventModal";
+import EditEventDetailsModal from "../components/EditEventDetailsModal";
+import EditEventFinancialsModal from "../components/EditEventFinancialsModal";
 
 import { TrashIcon, PencilIcon, PlusIcon } from "@heroicons/react/24/solid";
 
@@ -31,6 +33,13 @@ export default function EventsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [isFinancialsOpen, setIsFinancialsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sectionFilter, setSectionFilter] = useState<"all" | "1" | "2" | "3">(
+    "all"
+  );
 
   // ---------------------------
   // Fetch events
@@ -59,6 +68,10 @@ export default function EventsPage() {
   // Roles helpers
   // ---------------------------
   const roles: UserRole[] = currentUser.roles || [];
+  const isAminSer = (event: Event) => {
+    if (isSharedEvent(event)) return hasRole(AMIN_SER, 1);
+    return event.sections.some((s) => hasRole(AMIN_SER, s.id));
+  };
 
   const hasRole = (role: string, sectionId?: number) =>
     roles.some(
@@ -69,6 +82,13 @@ export default function EventsPage() {
     );
 
   const isHighAdmin = () => currentUser.is_global_admin === true;
+  const isAminSandou2 = (event: Event) => {
+    if (isSharedEvent(event)) return hasRole(AMIN_SANDOU2, 1);
+    return event.sections.some((s) => hasRole(AMIN_SANDOU2, s.id));
+  };
+
+  const isNe2b = (event: Event) =>
+    event.sections.some((s) => hasRole(NE2B, s.id));
 
   const isPresidentOrNe2b = (sectionId: number) => {
     if (hasRole(NE2B, sectionId)) return true;
@@ -140,6 +160,22 @@ export default function EventsPage() {
     isPresidentOrNe2b(2) ||
     isPresidentOrNe2b(3);
 
+  const filteredEvents = events.filter((event) => {
+    const text = (
+      event.title +
+      event.description +
+      (event.notes || "")
+    ).toLowerCase();
+
+    const matchesSearch = text.includes(searchTerm.toLowerCase());
+
+    const matchesSection =
+      sectionFilter === "all" ||
+      event.sections.some((s) => String(s.id) === sectionFilter);
+
+    return matchesSearch && matchesSection;
+  });
+
   // ---------------------------
   // Render
   // ---------------------------
@@ -148,6 +184,28 @@ export default function EventsPage() {
       <Navbar />
       <div className="max-w-6xl mx-auto px-6 py-8">
         <h1 className="text-3xl font-bold text-gray-800 mb-6">Events</h1>
+        <div className="flex flex-col md:flex-row gap-4 mb-6">
+          {/* Search */}
+          <input
+            type="text"
+            placeholder="Search events..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full md:w-1/2 border rounded px-4 py-2"
+          />
+
+          {/* Section Filter */}
+          <select
+            value={sectionFilter}
+            onChange={(e) => setSectionFilter(e.target.value as any)}
+            className="w-full md:w-1/4 border rounded px-4 py-2"
+          >
+            <option value="all">All Sections</option>
+            <option value="1">Chabiba</option>
+            <option value="2">Tala2e3</option>
+            <option value="3">Forsan</option>
+          </select>
+        </div>
 
         {canShowAddButton && (
           <button
@@ -163,7 +221,7 @@ export default function EventsPage() {
         {error && <p className="text-red-500">{error}</p>}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {events.map((event) => (
+          {filteredEvents.map((event) => (
             <div
               key={event.id}
               className="bg-white rounded-lg shadow p-6 flex flex-col"
@@ -172,7 +230,10 @@ export default function EventsPage() {
                 {canEditDetails(event) && (
                   <button
                     className="text-blue-600 hover:text-blue-800"
-                    onClick={() => alert(`Edit Details ${event.id}`)}
+                    onClick={() => {
+                      setSelectedEvent(event);
+                      setIsEditOpen(true);
+                    }}
                   >
                     <PencilIcon className="w-5 h-5" />
                   </button>
@@ -180,7 +241,10 @@ export default function EventsPage() {
                 {canEditFinancials(event) && (
                   <button
                     className="text-yellow-600 hover:text-yellow-800"
-                    onClick={() => alert(`Edit Financials ${event.id}`)}
+                    onClick={() => {
+                      setSelectedEvent(event);
+                      setIsFinancialsOpen(true);
+                    }}
                   >
                     <PencilIcon className="w-5 h-5" />
                   </button>
@@ -239,6 +303,43 @@ export default function EventsPage() {
         isGlobalAdmin={
           JSON.parse(localStorage.getItem("user_info") || "{}").is_global_admin
         }
+      />
+
+      <EditEventDetailsModal
+        open={isEditOpen}
+        event={selectedEvent}
+        onClose={() => {
+          setIsEditOpen(false);
+          setSelectedEvent(null);
+        }}
+        canEdit={
+          selectedEvent ? isHighAdmin() || isAminSer(selectedEvent) : false
+        }
+        onUpdated={(updatedEvent) => {
+          setEvents((prev) =>
+            prev.map((e) => (e.id === updatedEvent.id ? updatedEvent : e))
+          );
+        }}
+      />
+      <EditEventFinancialsModal
+        open={isFinancialsOpen}
+        event={selectedEvent}
+        onClose={() => {
+          setIsFinancialsOpen(false);
+          setSelectedEvent(null);
+        }}
+        canEdit={
+          selectedEvent
+            ? isHighAdmin() ||
+              isAminSandou2(selectedEvent) ||
+              isNe2b(selectedEvent)
+            : false
+        }
+        onUpdated={(updatedEvent) => {
+          setEvents((prev) =>
+            prev.map((e) => (e.id === updatedEvent.id ? updatedEvent : e))
+          );
+        }}
       />
     </div>
   );

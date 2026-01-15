@@ -16,6 +16,7 @@ export default function UsersPage() {
   const loggedUser: User | null = JSON.parse(
     localStorage.getItem("user_info") || "null"
   );
+  const isSuperAdmin = loggedUser?.is_super_admin === true;
   const isGlobalAdmin = loggedUser?.is_global_admin === true;
 
   // Get today's date in YYYY-MM-DD format
@@ -104,14 +105,16 @@ export default function UsersPage() {
             </>
           )}
 
-          {!isAdmin && isGlobalAdmin && (
-            <button
-              className="text-red-600 hover:text-red-800"
-              onClick={() => handleDeleteUser(u.id)}
-            >
-              <TrashIcon className="w-5 h-5" />
-            </button>
-          )}
+          {!u.is_super_admin &&
+            (isSuperAdmin || // Super admin can delete anyone
+              (isGlobalAdmin && !u.is_global_admin)) && ( // Global admins delete normal users only
+              <button
+                className="text-red-600 hover:text-red-800"
+                onClick={() => handleDeleteUser(u.id)}
+              >
+                <TrashIcon className="w-5 h-5" />
+              </button>
+            )}
         </div>
       </div>
     );
@@ -188,6 +191,7 @@ export default function UsersPage() {
             setUsers((prev) => [newUser, ...prev]);
             setShowAddUser(false);
           }}
+          isSuperAdmin={isSuperAdmin}
         />
       )}
 

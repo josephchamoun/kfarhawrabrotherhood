@@ -8,9 +8,15 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onCreated: (user: User) => void;
+  isSuperAdmin: boolean;
 }
 
-export default function AddUserModal({ open, onClose, onCreated }: Props) {
+export default function AddUserModal({
+  open,
+  onClose,
+  onCreated,
+  isSuperAdmin,
+}: Props) {
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -100,15 +106,17 @@ export default function AddUserModal({ open, onClose, onCreated }: Props) {
           className="w-full border rounded px-3 py-2"
         />
 
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            name="is_global_admin"
-            checked={form.is_global_admin}
-            onChange={handleChange}
-          />
-          Make Global Admin
-        </label>
+        {isSuperAdmin && (
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              name="is_global_admin"
+              checked={form.is_global_admin}
+              onChange={handleChange}
+            />
+            Make Global Admin
+          </label>
+        )}
 
         <div className="flex justify-end gap-2">
           <button type="button" onClick={onClose} className="text-gray-500">

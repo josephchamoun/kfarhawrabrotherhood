@@ -38,7 +38,8 @@ export interface User {
   email: string;
   password: string;
   phone?: string | null;
-  is_global_admin: boolean;      
+  is_global_admin: boolean;  
+  is_super_admin: boolean;      
   created_by?: number | null;
   created_at?: string;
   updated_at?: string;
