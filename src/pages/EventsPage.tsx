@@ -47,7 +47,7 @@ export default function EventsPage() {
   const [isFinancialsOpen, setIsFinancialsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [sectionFilter, setSectionFilter] = useState<"all" | "1" | "2" | "3">(
-    "all"
+    "all",
   );
   const [yearFilter, setYearFilter] = useState<string>("all");
   const [showFilters, setShowFilters] = useState(false);
@@ -89,7 +89,7 @@ export default function EventsPage() {
       (r) =>
         r.role_name === role &&
         r.end_date === null &&
-        (!sectionId || r.section_id === sectionId)
+        (!sectionId || r.section_id === sectionId),
     );
 
   const isHighAdmin = () => currentUser.is_global_admin === true;
@@ -121,29 +121,33 @@ export default function EventsPage() {
   // Permissions
   // ---------------------------
   const canEditDetails = (event: Event) => {
+    if (isEventLocked(event)) return false;
     if (isHighAdmin()) return true;
 
     if (isSharedEvent(event))
       return isPresidentOrNe2b(1) || hasRole(AMIN_SER, 1);
 
     return event.sections.some(
-      (s) => isPresidentOrNe2b(s.id) || hasRole(AMIN_SER, s.id)
+      (s) => isPresidentOrNe2b(s.id) || hasRole(AMIN_SER, s.id),
     );
   };
 
   const canEditFinancials = (event: Event) => {
+    if (isEventLocked(event)) return false;
     if (isHighAdmin()) return true;
 
     if (isSharedEvent(event))
       return isPresidentOrNe2b(1) || hasRole(AMIN_SANDOU2, 1);
 
     return event.sections.some(
-      (s) => isPresidentOrNe2b(s.id) || hasRole(AMIN_SANDOU2, s.id)
+      (s) => isPresidentOrNe2b(s.id) || hasRole(AMIN_SANDOU2, s.id),
     );
   };
 
-  const canDelete = (event: Event) =>
-    isHighAdmin() || event.sections.some((s) => isPresidentOrNe2b(s.id));
+  const canDelete = (event: Event) => {
+    if (isEventLocked(event)) return false;
+    return isHighAdmin() || event.sections.some((s) => isPresidentOrNe2b(s.id));
+  };
 
   // ---------------------------
   // Actions
@@ -162,6 +166,14 @@ export default function EventsPage() {
     }
   };
 
+  const isEventLocked = (event: Event) => {
+    const eventDate = new Date(event.event_date);
+    const lockDate = new Date(eventDate);
+    lockDate.setMonth(lockDate.getMonth() + 1);
+
+    return new Date() > lockDate;
+  };
+
   const calculateProfit = (event: Event) =>
     parseFloat(event.total_revenue) - parseFloat(event.total_spent);
 
@@ -174,8 +186,10 @@ export default function EventsPage() {
   // Get unique years from events
   const availableYears = Array.from(
     new Set(
-      events.map((event) => new Date(event.event_date).getFullYear().toString())
-    )
+      events.map((event) =>
+        new Date(event.event_date).getFullYear().toString(),
+      ),
+    ),
   ).sort((a, b) => parseInt(b) - parseInt(a));
 
   const filteredEvents = events.filter((event) => {
@@ -200,11 +214,11 @@ export default function EventsPage() {
   // Calculate totals
   const totalRevenue = filteredEvents.reduce(
     (sum, e) => sum + parseFloat(e.total_revenue),
-    0
+    0,
   );
   const totalSpent = filteredEvents.reduce(
     (sum, e) => sum + parseFloat(e.total_spent),
-    0
+    0,
   );
   const totalProfit = totalRevenue - totalSpent;
 
@@ -526,7 +540,7 @@ export default function EventsPage() {
                               year: "numeric",
                               month: "long",
                               day: "numeric",
-                            }
+                            },
                           )}
                         </span>
                       </div>
@@ -636,6 +650,11 @@ export default function EventsPage() {
                           </span>
                         ))}
                       </div>
+                      {isEventLocked(event) && (
+                        <span className="inline-flex items-center gap-1 bg-gray-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
+                          🔒 Locked
+                        </span>
+                      )}
                     </div>
                   </div>
                 );
@@ -683,7 +702,7 @@ export default function EventsPage() {
         }
         onUpdated={(updatedEvent) => {
           setEvents((prev) =>
-            prev.map((e) => (e.id === updatedEvent.id ? updatedEvent : e))
+            prev.map((e) => (e.id === updatedEvent.id ? updatedEvent : e)),
           );
         }}
       />
@@ -704,7 +723,7 @@ export default function EventsPage() {
         }
         onUpdated={(updatedEvent) => {
           setEvents((prev) =>
-            prev.map((e) => (e.id === updatedEvent.id ? updatedEvent : e))
+            prev.map((e) => (e.id === updatedEvent.id ? updatedEvent : e)),
           );
         }}
       />

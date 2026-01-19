@@ -9,6 +9,7 @@ import ForsanPage from "../pages/ForsanPage";
 import Tala2e3Page from "../pages/Tala2e3Page";
 import UserProfilePage from "../pages/UserProfilePage";
 import MyProfilePage from "../pages/MyProfilePage";
+import ContactsPage from "../pages/ContactsPage";
 
 import ProtectedRoute from "../components/ProtectedRoute";
 
@@ -25,6 +26,7 @@ export default function AppRouter() {
           <Route path="/chabiba" element={<ChabibaPage />} />
           <Route path="/forsan" element={<ForsanPage />} />
           <Route path="/tala2e3" element={<Tala2e3Page />} />
+          <Route path="/contacts" element={<ContactsPage />} />
         </Route>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />

@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   Cross,
+  Phone,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -28,12 +29,13 @@ export default function Navbar() {
   const navItems = [
     { to: "/", label: "Home", icon: Home },
     { to: "/users", label: "Users", icon: Users },
-    { to: "/profile", label: "My Profile", icon: Users },
+    { to: "/profile", label: "Profile", icon: Users },
     { to: "/chabiba", label: "Chabiba", icon: Award },
     { to: "/tala2e3", label: "Tala2e3", icon: Sparkles },
     { to: "/forsan", label: "Forsan", icon: Flame },
     { to: "/events", label: "Events", icon: Calendar },
     { to: "/shops", label: "Shops", icon: ShoppingBag },
+    { to: "/contacts", label: "Contacts", icon: Phone },
   ];
 
   return (

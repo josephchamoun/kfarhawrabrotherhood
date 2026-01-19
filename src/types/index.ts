@@ -60,6 +60,13 @@ export interface Shop {
   place: string;
   description: string;
 };
+export interface Contact {
+  id:number;
+  name: string;
+  phone: string;
+  town_name: string;
+ 
+};
 
 export type Creator = {
   id: number;

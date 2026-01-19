@@ -12,6 +12,20 @@ import {
 } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
 
+const ROLE_MAP: Record<number, string> = {
+  2: "Chabiba President",
+  3: "Tala2e3 President",
+  4: "Forsan President",
+  5: "Wakil Risele",
+  6: "Wakil E3lem",
+  7: "Amin Ser",
+  8: "Amin sandou2",
+  9: "Ne2b al Ra2is",
+  10: "Normal User",
+  11: "wakil tanchi2a",
+  12: "moustashar",
+};
+
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [showAddUser, setShowAddUser] = useState(false);
@@ -19,10 +33,27 @@ export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSection, setSelectedSection] = useState<string>("all");
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<string>("all");
+
   const navigate = useNavigate();
 
+  const getActiveRoleNames = (user: User): string[] => {
+    if (!user.sections) return [];
+
+    return user.sections
+      .filter(
+        (s): s is typeof s & { pivot: NonNullable<typeof s.pivot> } =>
+          !!s.pivot &&
+          !!s.pivot.start_date &&
+          s.pivot.start_date <= today &&
+          (s.pivot.end_date == null || s.pivot.end_date >= today),
+      )
+      .map((s) => ROLE_MAP[s.pivot.role_id])
+      .filter(Boolean);
+  };
+
   const loggedUser: User | null = JSON.parse(
-    localStorage.getItem("user_info") || "null"
+    localStorage.getItem("user_info") || "null",
   );
   const isSuperAdmin = loggedUser?.is_super_admin === true;
   const isGlobalAdmin = loggedUser?.is_global_admin === true;
@@ -73,6 +104,9 @@ export default function UsersPage() {
 
     setUsers((prev) => prev.filter((u) => u.id !== userId));
   };
+  const allRoles = Array.from(
+    new Set(users.flatMap((u) => getActiveRoleNames(u))),
+  ).sort();
 
   // Get all unique sections from users
   const allSections = Array.from(
@@ -87,11 +121,11 @@ export default function UsersPage() {
                 s.pivot.start_date <= today &&
                 (s.pivot.end_date === null ||
                   s.pivot.end_date === undefined ||
-                  s.pivot.end_date >= today)
+                  s.pivot.end_date >= today),
             )
-            .map((s) => s.name) || []
-      )
-    )
+            .map((s) => s.name) || [],
+      ),
+    ),
   ).sort();
 
   // Filter users based on search and section
@@ -104,7 +138,7 @@ export default function UsersPage() {
         user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (user.phone && user.phone.includes(searchQuery));
 
-      // Section filter
+      // Section filter (UNCHANGED)
       const matchesSection =
         selectedSection === "all" || selectedSection === "no-section"
           ? selectedSection === "no-section"
@@ -115,7 +149,7 @@ export default function UsersPage() {
                   s.pivot.start_date <= today &&
                   (s.pivot.end_date === null ||
                     s.pivot.end_date === undefined ||
-                    s.pivot.end_date >= today)
+                    s.pivot.end_date >= today),
               )
             : true
           : user.sections?.some(
@@ -126,10 +160,15 @@ export default function UsersPage() {
                 s.pivot.start_date <= today &&
                 (s.pivot.end_date === null ||
                   s.pivot.end_date === undefined ||
-                  s.pivot.end_date >= today)
+                  s.pivot.end_date >= today),
             );
 
-      return matchesSearch && matchesSection;
+      // ⭐ ROLE FILTER
+      const activeRoles = getActiveRoleNames(user);
+      const matchesRole =
+        selectedRole === "all" || activeRoles.includes(selectedRole);
+
+      return matchesSearch && matchesSection && matchesRole;
     });
   };
 
@@ -144,7 +183,7 @@ export default function UsersPage() {
         s.pivot.start_date <= today &&
         (s.pivot.end_date === null ||
           s.pivot.end_date === undefined ||
-          s.pivot.end_date >= today)
+          s.pivot.end_date >= today),
     );
 
     return (
@@ -197,7 +236,7 @@ export default function UsersPage() {
                     >
                       {sectionName}
                     </span>
-                  )
+                  ),
                 )}
               </div>
             )}
@@ -332,6 +371,39 @@ export default function UsersPage() {
                     </button>
                   ))}
                 </div>
+                {/* Role Filter */}
+                <div className="mt-4">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Filter by Role
+                  </label>
+
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setSelectedRole("all")}
+                      className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                        selectedRole === "all"
+                          ? "bg-indigo-600 text-white shadow-md"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                    >
+                      All Roles
+                    </button>
+
+                    {allRoles.map((role) => (
+                      <button
+                        key={role}
+                        onClick={() => setSelectedRole(role)}
+                        className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                          selectedRole === role
+                            ? "bg-indigo-600 text-white shadow-md"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        {role}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
 
@@ -357,36 +429,42 @@ export default function UsersPage() {
         </div>
 
         {/* Users Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div
+          className={`grid grid-cols-1 gap-6 ${
+            isSuperAdmin ? "lg:grid-cols-3" : "lg:grid-cols-1"
+          }`}
+        >
           {/* Global Admins */}
-          <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-200 lg:col-span-1">
-            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
-              <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-xl flex items-center justify-center">
-                <span className="text-2xl">👑</span>
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">
-                  Global Admins
-                </h2>
-                <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full font-semibold">
-                  {globalAdmins.length} members
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-3 max-h-[calc(100vh-400px)] overflow-y-auto pr-2">
-              {globalAdmins.length ? (
-                globalAdmins.map((u) => renderUser(u, true))
-              ) : (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <span className="text-3xl">👥</span>
-                  </div>
-                  <p className="text-gray-400 text-sm">No admins found</p>
+          {isSuperAdmin && (
+            <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-200 lg:col-span-1">
+              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
+                <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-xl flex items-center justify-center">
+                  <span className="text-2xl">👑</span>
                 </div>
-              )}
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Global Admins
+                  </h2>
+                  <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full font-semibold">
+                    {globalAdmins.length} members
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-3 max-h-[calc(100vh-400px)] overflow-y-auto pr-2">
+                {globalAdmins.length ? (
+                  globalAdmins.map((u) => renderUser(u, true))
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <span className="text-3xl">👥</span>
+                    </div>
+                    <p className="text-gray-400 text-sm">No admins found</p>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Other Users */}
           <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-200 lg:col-span-2">
