@@ -49,8 +49,34 @@ export default function EventsPage() {
   const [sectionFilter, setSectionFilter] = useState<"all" | "1" | "2" | "3">(
     "all",
   );
+  type DateFilter = "all" | "upcoming" | "past";
+
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+
   const [yearFilter, setYearFilter] = useState<string>("all");
   const [showFilters, setShowFilters] = useState(false);
+
+  const LOCK_AFTER_DAYS = 30;
+  const WARNING_DAYS = 30;
+
+  const getDaysSinceEvent = (eventDate: string) => {
+    const eventTime = new Date(eventDate).getTime();
+    const now = new Date().getTime();
+    return Math.floor((now - eventTime) / (1000 * 60 * 60 * 24));
+  };
+
+  const getDaysRemainingBeforeLock = (eventDate: string) => {
+    return LOCK_AFTER_DAYS - getDaysSinceEvent(eventDate);
+  };
+
+  const isLocked = (eventDate: string) => {
+    return getDaysRemainingBeforeLock(eventDate) <= 0;
+  };
+
+  const isInWarningPeriod = (eventDate: string) => {
+    const remaining = getDaysRemainingBeforeLock(eventDate);
+    return remaining > 0 && remaining <= WARNING_DAYS;
+  };
 
   // ---------------------------
   // Fetch events
@@ -117,9 +143,40 @@ export default function EventsPage() {
     return ids === "1,2,3";
   };
 
+  //Upcoming & Past events
+  const isUpcomingEvent = (eventDate: string) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const event = new Date(eventDate);
+    event.setHours(0, 0, 0, 0);
+
+    return event >= today;
+  };
+
+  const isPastEvent = (eventDate: string) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const event = new Date(eventDate);
+    event.setHours(0, 0, 0, 0);
+
+    return event < today;
+  };
+
   // ---------------------------
   // Permissions
   // ---------------------------
+
+  const canEditDetailsWithDate = (event: Event) =>
+    !isLocked(event.event_date) && canEditDetails(event);
+
+  const canEditFinancialsWithDate = (event: Event) =>
+    !isLocked(event.event_date) && canEditFinancials(event);
+
+  const canDeleteWithDate = (event: Event) =>
+    !isLocked(event.event_date) && canDelete(event);
+
   const canEditDetails = (event: Event) => {
     if (isEventLocked(event)) return false;
     if (isHighAdmin()) return true;
@@ -166,10 +223,11 @@ export default function EventsPage() {
     }
   };
 
-  const isEventLocked = (event: Event) => {
+  const isEventLocked = (event: Event): boolean => {
     const eventDate = new Date(event.event_date);
+
     const lockDate = new Date(eventDate);
-    lockDate.setMonth(lockDate.getMonth() + 1);
+    lockDate.setDate(lockDate.getDate() + LOCK_AFTER_DAYS);
 
     return new Date() > lockDate;
   };
@@ -208,7 +266,12 @@ export default function EventsPage() {
     const eventYear = new Date(event.event_date).getFullYear().toString();
     const matchesYear = yearFilter === "all" || eventYear === yearFilter;
 
-    return matchesSearch && matchesSection && matchesYear;
+    const matchesDate =
+      dateFilter === "all" ||
+      (dateFilter === "upcoming" && isUpcomingEvent(event.event_date)) ||
+      (dateFilter === "past" && isPastEvent(event.event_date));
+
+    return matchesSearch && matchesSection && matchesYear && matchesDate;
   });
 
   // Calculate totals
@@ -423,6 +486,47 @@ export default function EventsPage() {
                     ))}
                   </div>
                 </div>
+                {/* Date Filter */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Filter by Date
+                  </label>
+
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setDateFilter("all")}
+                      className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                        dateFilter === "all"
+                          ? "bg-emerald-600 text-white shadow-md"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                    >
+                      All Events
+                    </button>
+
+                    <button
+                      onClick={() => setDateFilter("upcoming")}
+                      className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                        dateFilter === "upcoming"
+                          ? "bg-blue-600 text-white shadow-md"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                    >
+                      ⏳ Upcoming
+                    </button>
+
+                    <button
+                      onClick={() => setDateFilter("past")}
+                      className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                        dateFilter === "past"
+                          ? "bg-gray-700 text-white shadow-md"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                    >
+                      ✅ Done
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -479,21 +583,24 @@ export default function EventsPage() {
                     key={event.id}
                     className="group bg-white rounded-2xl shadow-md hover:shadow-xl border border-gray-200 overflow-hidden transition-all transform hover:-translate-y-1"
                   >
-                    {/* Card Header with Actions */}
-                    <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-4 relative">
+                    {/* ================= HEADER ================= */}
+                    <div className="relative bg-gradient-to-r from-blue-600 to-indigo-700 p-4">
                       <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h2 className="text-xl font-bold text-white mb-1 pr-2">
+                        {/* Title & Description */}
+                        <div className="flex-1 pr-4">
+                          <h2 className="text-xl font-bold text-white mb-1">
                             {event.title}
                           </h2>
-                          <p className="text-blue-100 text-sm">
+                          <p className="text-blue-100 text-sm line-clamp-2">
                             {event.description}
                           </p>
                         </div>
-                        <div className="flex gap-1 ml-2">
-                          {canEditDetails(event) && (
+
+                        {/* Actions */}
+                        <div className="flex gap-1">
+                          {canEditDetailsWithDate(event) && (
                             <button
-                              className="bg-white/20 hover:bg-white/30 text-white p-2 rounded-lg transition-all"
+                              className="bg-white/20 hover:bg-white/30 text-white p-2 rounded-lg transition-all duration-200 hover:scale-110 hover:rotate-1"
                               onClick={() => {
                                 setSelectedEvent(event);
                                 setIsEditOpen(true);
@@ -503,9 +610,10 @@ export default function EventsPage() {
                               <PencilIcon className="w-4 h-4" />
                             </button>
                           )}
-                          {canEditFinancials(event) && (
+
+                          {canEditFinancialsWithDate(event) && (
                             <button
-                              className="bg-yellow-500/80 hover:bg-yellow-500 text-white p-2 rounded-lg transition-all"
+                              className="bg-yellow-500/80 hover:bg-yellow-500 text-white p-2 rounded-lg transition-all duration-200 hover:scale-110"
                               onClick={() => {
                                 setSelectedEvent(event);
                                 setIsFinancialsOpen(true);
@@ -515,9 +623,10 @@ export default function EventsPage() {
                               <CurrencyDollarIcon className="w-4 h-4" />
                             </button>
                           )}
-                          {canDelete(event) && (
+
+                          {canDeleteWithDate(event) && (
                             <button
-                              className="bg-red-500/80 hover:bg-red-600 text-white p-2 rounded-lg transition-all"
+                              className="bg-red-500/80 hover:bg-red-600 text-white p-2 rounded-lg transition-all duration-200 hover:scale-110"
                               onClick={() => handleDeleteEvent(event.id)}
                               title="Delete Event"
                             >
@@ -528,55 +637,88 @@ export default function EventsPage() {
                       </div>
                     </div>
 
-                    {/* Card Body */}
+                    {/* ================= BODY ================= */}
                     <div className="p-6">
-                      {/* Date */}
-                      <div className="flex items-center gap-2 mb-4 text-gray-600">
-                        <CalendarIcon className="w-5 h-5 text-blue-600" />
-                        <span className="font-medium">
+                      {/* Status Badges */}
+                      {(isEventLocked(event) ||
+                        isInWarningPeriod(event.event_date)) && (
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          {isEventLocked(event) && (
+                            <span className="inline-flex items-center gap-1 bg-gray-800 text-white text-xs px-3 py-1 rounded-full font-semibold shadow">
+                              🔒 Locked
+                            </span>
+                          )}
+
+                          {!isEventLocked(event) &&
+                            isInWarningPeriod(event.event_date) && (
+                              <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 border border-red-300 text-xs px-3 py-1 rounded-full font-semibold shadow">
+                                ⏳{" "}
+                                {getDaysRemainingBeforeLock(event.event_date)}{" "}
+                                days remaining to edit
+                              </span>
+                            )}
+                        </div>
+                      )}
+
+                      {/* Date & Status */}
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-5">
+                        {/* Event Date */}
+                        <div className="flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-semibold">
+                          <CalendarIcon className="w-4 h-4" />
                           {new Date(event.event_date).toLocaleDateString(
                             "en-US",
                             {
-                              year: "numeric",
-                              month: "long",
+                              month: "short",
                               day: "numeric",
+                              year: "numeric",
                             },
                           )}
-                        </span>
+                        </div>
+
+                        {/* Status Badge */}
+                        {isUpcomingEvent(event.event_date) ? (
+                          <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs px-3 py-1 rounded-full font-semibold">
+                            ⏳ Upcoming
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 bg-gray-200 text-gray-700 text-xs px-3 py-1 rounded-full font-semibold">
+                            ✅ Done
+                          </span>
+                        )}
                       </div>
 
                       {/* Financials */}
-                      <div className="space-y-3 mb-4">
+                      <div className="space-y-3 mb-5">
                         <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
                           <span className="text-sm font-medium text-gray-700">
-                            Revenue
+                            💰 Revenue
                           </span>
                           <span className="text-lg font-bold text-green-600">
                             ${parseFloat(event.total_revenue).toFixed(2)}
                           </span>
                         </div>
+
                         <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
                           <span className="text-sm font-medium text-gray-700">
-                            Spent
+                            💸 Spent
                           </span>
                           <span className="text-lg font-bold text-red-600">
                             ${parseFloat(event.total_spent).toFixed(2)}
                           </span>
                         </div>
+
                         <div
-                          className={`flex justify-between items-center p-3 ${
-                            isProfitable ? "bg-blue-50" : "bg-orange-50"
-                          } rounded-lg border-2 ${
+                          className={`p-4 rounded-xl border-2 flex justify-between items-center ${
                             isProfitable
-                              ? "border-blue-200"
-                              : "border-orange-200"
+                              ? "bg-blue-50 border-blue-300"
+                              : "bg-orange-50 border-orange-300"
                           }`}
                         >
                           <span className="text-sm font-semibold text-gray-700">
-                            Net Profit
+                            📊 Net Profit
                           </span>
                           <span
-                            className={`text-xl font-bold ${
+                            className={`text-2xl font-extrabold ${
                               isProfitable ? "text-blue-600" : "text-orange-600"
                             }`}
                           >
@@ -587,74 +729,47 @@ export default function EventsPage() {
 
                       {/* Notes */}
                       {event.notes && (
-                        <div className="mb-4">
-                          <p className="text-xs font-semibold text-gray-500 mb-1">
-                            NOTES
-                          </p>
-                          <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
+                        <details className="mb-5 bg-gray-50 rounded-lg p-3">
+                          <summary className="cursor-pointer text-xs font-semibold text-gray-600">
+                            📝 Notes
+                          </summary>
+                          <p className="mt-2 text-sm text-gray-700">
                             {event.notes}
                           </p>
-                        </div>
+                        </details>
                       )}
 
+                      {/* Drive Link */}
                       {event.drive_Link && (
-                        <div className="mb-4">
+                        <div className="mb-5">
                           <a
                             href={event.drive_Link}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 hover:underline"
                           >
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-                              />
-                            </svg>
-                            View Drive Files
+                            🔗 View Drive Files
                           </a>
                         </div>
                       )}
 
-                      {/* Sections & Shared Badge */}
+                      {/* Sections & Shared */}
                       <div className="flex flex-wrap gap-2">
                         {isSharedEvent(event) && (
                           <span className="inline-flex items-center gap-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-md">
-                            <svg
-                              className="w-3 h-3"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                            Shared Event
+                            🔐 Shared Event
                           </span>
                         )}
+
                         {event.sections.map((section: any) => (
                           <span
                             key={section.id}
-                            className="bg-blue-100 text-blue-700 text-xs px-3 py-1 rounded-full font-semibold"
+                            className="bg-gradient-to-r from-blue-100 to-indigo-100 text-indigo-700 text-xs px-3 py-1 rounded-full font-semibold"
                           >
                             {section.name}
                           </span>
                         ))}
                       </div>
-                      {isEventLocked(event) && (
-                        <span className="inline-flex items-center gap-1 bg-gray-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
-                          🔒 Locked
-                        </span>
-                      )}
                     </div>
                   </div>
                 );
