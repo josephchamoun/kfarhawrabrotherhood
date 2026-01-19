@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
+import { UserGroupIcon } from "@heroicons/react/24/outline";
+
 export default function Navbar() {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -36,6 +38,7 @@ export default function Navbar() {
     { to: "/events", label: "Events", icon: Calendar },
     { to: "/shops", label: "Shops", icon: ShoppingBag },
     { to: "/contacts", label: "Contacts", icon: Phone },
+    { to: "/meetings", label: "Meetings", icon: UserGroupIcon },
   ];
 
   return (

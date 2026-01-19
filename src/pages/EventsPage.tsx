@@ -33,6 +33,7 @@ const FORSAN_PRESIDENT = "Forsan President";
 const NE2B = "Ne2b al Ra2is";
 const AMIN_SER = "Amin Ser";
 const AMIN_SANDOU2 = "Amin sandou2";
+const WAKIL_TANCHI2A = "wakil tanchi2a";
 
 // ---------------------------
 // Component
@@ -109,6 +110,11 @@ export default function EventsPage() {
     if (isSharedEvent(event)) return hasRole(AMIN_SER, 1);
     return event.sections.some((s) => hasRole(AMIN_SER, s.id));
   };
+  const isWakilTanchi2a = (event: Event) => {
+    if (isSharedEvent(event)) return false;
+
+    return event.sections.some((s) => hasRole(WAKIL_TANCHI2A, s.id));
+  };
 
   const hasRole = (role: string, sectionId?: number) =>
     roles.some(
@@ -180,6 +186,9 @@ export default function EventsPage() {
   const canEditDetails = (event: Event) => {
     if (isEventLocked(event)) return false;
     if (isHighAdmin()) return true;
+
+    // Wakil Tanchi2a → description only
+    if (isWakilTanchi2a(event)) return true;
 
     if (isSharedEvent(event))
       return isPresidentOrNe2b(1) || hasRole(AMIN_SER, 1);
@@ -812,8 +821,16 @@ export default function EventsPage() {
           setIsEditOpen(false);
           setSelectedEvent(null);
         }}
-        canEdit={
-          selectedEvent ? isHighAdmin() || isAminSer(selectedEvent) : false
+        editMode={
+          selectedEvent
+            ? isHighAdmin()
+              ? "full"
+              : isAminSer(selectedEvent)
+                ? "full"
+                : isWakilTanchi2a(selectedEvent)
+                  ? "description"
+                  : "none"
+            : "none"
         }
         onUpdated={(updatedEvent) => {
           setEvents((prev) =>
