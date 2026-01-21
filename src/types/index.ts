@@ -86,7 +86,8 @@ export type Event = {
   total_revenue: string;
   creator: Creator;
   notes: string;
-  drive_Link: string;
+  drive_link: string;
+  photo_link: string;
   sections: Section[];
 };
 

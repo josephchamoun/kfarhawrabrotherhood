@@ -749,15 +749,29 @@ export default function EventsPage() {
                       )}
 
                       {/* Drive Link */}
-                      {event.drive_Link && (
+                      {event.drive_link && (
                         <div className="mb-5">
                           <a
-                            href={event.drive_Link}
+                            href={event.drive_link}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 hover:underline"
                           >
                             🔗 View Drive Files
+                          </a>
+                        </div>
+                      )}
+
+                      {/* Photo Link */}
+                      {event.photo_link && (
+                        <div className="mb-5">
+                          <a
+                            href={event.photo_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 hover:underline"
+                          >
+                            🔗 View Event Photos
                           </a>
                         </div>
                       )}

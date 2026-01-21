@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
 import {
@@ -6,6 +7,7 @@ import {
   FaMapMarkerAlt,
   FaPhone,
   FaPlus,
+  FaTrash,
 } from "react-icons/fa";
 import api from "../api/api";
 import Navbar from "../components/Navbar";
@@ -66,6 +68,27 @@ export default function ShopsPage() {
     );
     setShops(filtered);
   }, [searchTerm, allShops]);
+  const handleDeleteShop = async (shopId: number) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this shop? This action cannot be undone.",
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await api.delete(`/shops/${shopId}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        },
+      });
+
+      // Remove shop from state (both lists)
+      setAllShops((prev) => prev.filter((s) => s.id !== shopId));
+      setShops((prev) => prev.filter((s) => s.id !== shopId));
+    } catch (err) {
+      alert("Failed to delete shop. Please try again.");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
@@ -143,61 +166,117 @@ export default function ShopsPage() {
             {shops.map((shop) => (
               <div
                 key={shop.id}
-                className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 overflow-hidden border-t-4 border-blue-600"
+                className="group relative bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-blue-200"
               >
-                {/* Card Header with Icon */}
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 border-b border-gray-100">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h2 className="text-2xl font-bold text-gray-900 mb-2 group-hover:text-blue-700 transition-colors">
-                        {shop.name}
-                      </h2>
-                    </div>
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                      <FaStore className="text-white text-xl" />
-                    </div>
-                  </div>
-                </div>
+                {/* Top accent border */}
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600"></div>
 
-                {/* Card Body */}
-                <div className="p-6 space-y-3">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-blue-100 transition-colors">
-                      <FaMapMarkerAlt className="text-blue-600 text-lg" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-1">
-                        Location
-                      </p>
-                      <p className="text-gray-800 font-medium">{shop.place}</p>
-                    </div>
-                  </div>
+                <div className="p-6">
+                  {/* Card Header */}
+                  <div className="flex items-start justify-between gap-3 mb-4">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      {/* Store Icon */}
+                      <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform flex-shrink-0">
+                        <FaStore className="text-white text-xl" />
+                      </div>
 
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-indigo-100 transition-colors">
-                      <FaPhone className="text-indigo-600 text-lg" />
+                      {/* Shop Name */}
+                      <div className="flex-1 min-w-0">
+                        <h2 className="text-xl font-bold text-gray-900 group-hover:text-blue-700 transition-colors truncate">
+                          {shop.name}
+                        </h2>
+                        <div className="h-1 w-12 bg-gradient-to-r from-blue-600 to-transparent rounded-full mt-2 group-hover:w-20 transition-all"></div>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-1">
-                        Phone
-                      </p>
-                      <a
-                        href={`tel:${shop.phone_number}`}
-                        className="text-gray-800 font-medium hover:text-blue-600 transition-colors"
+
+                    {/* Delete Button – only for authorized users */}
+                    {canAddShop && (
+                      <button
+                        onClick={() => handleDeleteShop(shop.id)}
+                        className="w-9 h-9 bg-red-50 hover:bg-red-500 text-red-600 hover:text-white rounded-xl flex items-center justify-center transition-all shadow-sm hover:shadow-md group/delete flex-shrink-0"
+                        title="Delete shop"
                       >
-                        {shop.phone_number}
-                      </a>
-                    </div>
+                        <FaTrash className="text-sm group-hover/delete:scale-110 transition-transform" />
+                      </button>
+                    )}
                   </div>
 
-                  {shop.description && (
-                    <div className="pt-4 border-t border-gray-100">
-                      <p className="text-gray-600 text-sm leading-relaxed line-clamp-3">
-                        {shop.description}
-                      </p>
+                  {/* Card Body */}
+                  <div className="space-y-3">
+                    {/* Location */}
+                    <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 group-hover:from-blue-100 group-hover:to-indigo-100 transition-all">
+                      <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <FaMapMarkerAlt className="text-blue-600 text-lg" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-blue-700 font-semibold mb-0.5 uppercase tracking-wide">
+                          Location
+                        </p>
+                        <p className="text-gray-900 font-medium text-sm truncate">
+                          {shop.place}
+                        </p>
+                      </div>
                     </div>
-                  )}
+
+                    {/* Phone */}
+                    <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 group-hover:from-indigo-100 group-hover:to-purple-100 transition-all">
+                      <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <FaPhone className="text-indigo-600 text-lg" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-indigo-700 font-semibold mb-0.5 uppercase tracking-wide">
+                          Phone
+                        </p>
+                        <a
+                          href={`tel:${shop.phone_number}`}
+                          className="text-gray-900 font-medium text-sm hover:text-indigo-600 transition-colors inline-flex items-center gap-1 group/phone"
+                        >
+                          <span>{shop.phone_number}</span>
+                          <svg
+                            className="w-3 h-3 opacity-0 group-hover/phone:opacity-100 transition-opacity"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                            />
+                          </svg>
+                        </a>
+                      </div>
+                    </div>
+
+                    {/* Description */}
+                    {shop.description && (
+                      <div className="pt-3 mt-3 border-t border-gray-100">
+                        <div className="flex items-start gap-2">
+                          <svg
+                            className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                          <p className="text-gray-600 text-sm leading-relaxed line-clamp-3 flex-1">
+                            {shop.description}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
+
+                {/* Bottom hover effect */}
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
               </div>
             ))}
           </div>

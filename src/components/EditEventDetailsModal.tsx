@@ -47,6 +47,7 @@ export default function EditEventDetailsModal({
     type: "",
     notes: "",
     drive_link: "",
+    photo_link: "",
     event_date: "",
   });
 
@@ -66,7 +67,8 @@ export default function EditEventDetailsModal({
         description: event.description ?? "",
         type: event.type ?? "",
         notes: event.notes ?? "",
-        drive_link: event.drive_Link ?? "",
+        drive_link: event.drive_link ?? "",
+        photo_link: event.photo_link ?? "",
         event_date: event.event_date ?? "",
       });
     }
@@ -99,6 +101,7 @@ export default function EditEventDetailsModal({
         type: form.type,
         notes: form.notes,
         drive_link: form.drive_link,
+        photo_link: form.photo_link,
         event_date: form.event_date,
       };
     } else {
@@ -262,6 +265,26 @@ export default function EditEventDetailsModal({
               <input
                 name="drive_link"
                 value={form.drive_link}
+                onChange={handleChange}
+                disabled={!canEditFull}
+                className={`pl-10 w-full px-4 py-3 border-2 rounded-xl ${
+                  canEditFull
+                    ? "border-gray-200"
+                    : "bg-gray-50 cursor-not-allowed"
+                }`}
+              />
+            </div>
+          </div>
+          {/* -------- PHOTOS LINK -------- */}
+          <div>
+            <label className="font-semibold text-gray-700 mb-1 block">
+              Photos Link
+            </label>
+            <div className="relative">
+              <FaLink className="absolute left-3 top-3.5 text-gray-400" />
+              <input
+                name="photo_link"
+                value={form.photo_link}
                 onChange={handleChange}
                 disabled={!canEditFull}
                 className={`pl-10 w-full px-4 py-3 border-2 rounded-xl ${

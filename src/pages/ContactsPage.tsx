@@ -6,6 +6,7 @@ import {
   FaMapMarkerAlt,
   FaPhone,
   FaPlus,
+  FaTrash,
 } from "react-icons/fa";
 import api from "../api/api";
 import Navbar from "../components/Navbar";
@@ -67,6 +68,26 @@ export default function ContactsPage() {
     );
     setContacts(filtered);
   }, [searchTerm, allContacts]);
+  const handleDeleteContact = async (contactId: number) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this contact?",
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await api.delete(`/contacts/${contactId}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        },
+      });
+
+      setAllContacts((prev) => prev.filter((c) => c.id !== contactId));
+      setContacts((prev) => prev.filter((c) => c.id !== contactId));
+    } catch {
+      alert("Failed to delete contact");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
@@ -140,37 +161,93 @@ export default function ContactsPage() {
             {contacts.map((contact) => (
               <div
                 key={contact.id}
-                className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-2 border-t-4 border-blue-600"
+                className="group relative bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 hover:border-blue-200"
               >
-                <div className="bg-blue-50 p-6 border-b">
-                  <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-bold text-gray-900">
-                      {contact.name}
-                    </h2>
-                    <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center">
-                      <FaUser className="text-white text-lg" />
+                {/* Top accent border */}
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600"></div>
+
+                <div className="p-6">
+                  {/* Card Header */}
+                  <div className="flex items-start justify-between gap-3 mb-4">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      {/* User Icon */}
+                      <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform flex-shrink-0">
+                        <FaUser className="text-white text-xl" />
+                      </div>
+
+                      {/* Contact Name */}
+                      <div className="flex-1 min-w-0">
+                        <h2 className="text-xl font-bold text-gray-900 group-hover:text-blue-700 transition-colors truncate">
+                          {contact.name}
+                        </h2>
+                        <div className="h-1 w-12 bg-gradient-to-r from-blue-600 to-transparent rounded-full mt-2 group-hover:w-20 transition-all"></div>
+                      </div>
+                    </div>
+
+                    {/* Delete Button – only for authorized users */}
+                    {canAddContact && (
+                      <button
+                        onClick={() => handleDeleteContact(contact.id)}
+                        className="w-9 h-9 bg-red-50 hover:bg-red-500 text-red-600 hover:text-white rounded-xl flex items-center justify-center transition-all shadow-sm hover:shadow-md group/delete flex-shrink-0"
+                        title="Delete contact"
+                      >
+                        <FaTrash className="text-sm group-hover/delete:scale-110 transition-transform" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Card Body */}
+                  <div className="space-y-3">
+                    {/* Location */}
+                    <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 group-hover:from-blue-100 group-hover:to-indigo-100 transition-all">
+                      <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <FaMapMarkerAlt className="text-blue-600 text-lg" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-blue-700 font-semibold mb-0.5 uppercase tracking-wide">
+                          Location
+                        </p>
+                        <p className="text-gray-900 font-medium text-sm truncate">
+                          {contact.town_name}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Phone */}
+                    <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 group-hover:from-indigo-100 group-hover:to-purple-100 transition-all">
+                      <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <FaPhone className="text-indigo-600 text-lg" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-indigo-700 font-semibold mb-0.5 uppercase tracking-wide">
+                          Phone
+                        </p>
+                        <a
+                          href={`tel:${contact.phone}`}
+                          className="text-gray-900 font-medium text-sm hover:text-indigo-600 transition-colors inline-flex items-center gap-1 group/phone"
+                        >
+                          <span>{contact.phone}</span>
+                          <svg
+                            className="w-3 h-3 opacity-0 group-hover/phone:opacity-100 transition-opacity"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                            />
+                          </svg>
+                        </a>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="p-6 space-y-4">
-                  <div className="flex gap-3">
-                    <FaMapMarkerAlt className="text-blue-600 mt-1" />
-                    <p className="font-medium text-gray-800">
-                      {contact.town_name}
-                    </p>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <FaPhone className="text-indigo-600 mt-1" />
-                    <a
-                      href={`tel:${contact.phone}`}
-                      className="font-medium text-gray-800 hover:text-blue-600"
-                    >
-                      {contact.phone}
-                    </a>
-                  </div>
-                </div>
+                {/* Bottom hover effect */}
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
               </div>
             ))}
           </div>
