@@ -11,6 +11,7 @@ import {
   FunnelIcon,
 } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
+import type { UserRole } from "../types";
 
 const ROLE_MAP: Record<number, string> = {
   2: "Chabiba President",
@@ -25,6 +26,10 @@ const ROLE_MAP: Record<number, string> = {
   11: "wakil tanchi2a",
   12: "moustashar",
 };
+const CHABIBA_PRESIDENT = "Chabiba President";
+const TALA2E3_PRESIDENT = "Tala2e3 President";
+const FORSAN_PRESIDENT = "Forsan President";
+const NE2B = "Ne2b al Ra2is";
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -98,6 +103,28 @@ export default function UsersPage() {
   useEffect(() => {
     fetchUsers();
   }, []);
+  /////
+  const currentUser = JSON.parse(localStorage.getItem("user_info") || "{}");
+  const roles: UserRole[] = currentUser.roles || [];
+
+  const isHighAdmin = () => currentUser.is_global_admin === true;
+
+  const canAddSection = () => {
+    // Global admin
+    if (isHighAdmin()) return true;
+
+    // Any active president or Ne2b (in any section)
+    return roles.some(
+      (r) =>
+        (r.role_name === NE2B ||
+          r.role_name === CHABIBA_PRESIDENT ||
+          r.role_name === TALA2E3_PRESIDENT ||
+          r.role_name === FORSAN_PRESIDENT) &&
+        r.end_date === null,
+    );
+  };
+
+  //////
 
   const handleDeleteUser = async (userId: number) => {
     if (!window.confirm("Are you sure you want to delete this user?")) return;
@@ -258,7 +285,8 @@ export default function UsersPage() {
                   View
                 </button>
               )}
-            {!isGlobalAdmin && (
+
+            {!isGlobalAdmin && canAddSection() && (
               <button
                 className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-3 py-2 rounded-lg text-sm font-medium transition-all transform hover:scale-105 shadow-sm"
                 onClick={() => setSelectedUserId(u.id)}
