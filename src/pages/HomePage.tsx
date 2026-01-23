@@ -30,6 +30,7 @@ export default function HomePage() {
     const fetchStats = async () => {
       try {
         const res = await api.get("/stats");
+
         animateNumbers(res.data);
       } catch (error) {
         console.error("Failed to load stats", error);
