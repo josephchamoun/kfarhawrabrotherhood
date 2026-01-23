@@ -8,7 +8,7 @@ import {
   FaCalendarAlt,
 } from "react-icons/fa";
 import { useEffect, useState } from "react";
-import api from "../api/api";
+//import api from "../api/api";
 import type { Stats } from "../types";
 import MainLogo from "../assets/mainlogo.jpg";
 
@@ -29,9 +29,18 @@ export default function HomePage() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await api.get("/stats");
+        // Directly call your Render backend URL
+        const res = await fetch(
+          "https://brotherhood-backend-1.onrender.com/api/stats",
+        );
 
-        animateNumbers(res.data);
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+
+        const data = await res.json();
+
+        animateNumbers(data);
       } catch (error) {
         console.error("Failed to load stats", error);
       } finally {
