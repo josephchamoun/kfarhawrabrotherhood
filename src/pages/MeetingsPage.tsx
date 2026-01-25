@@ -14,7 +14,7 @@ import EditMeetingLinkModal from "../components/EditMeetingLinkModal";
 
 interface MeetingSection {
   id: number;
-  key: "chabiba" | "tala2e3" | "forsan";
+  key: "chabiba" | "talaee" | "forsan";
   title: string;
   driveLinks: string[];
 }
@@ -67,7 +67,7 @@ export default function MeetingsPage() {
       } catch {
         setSections([
           { key: "chabiba", id: 1, title: "Chabiba Meetings", driveLinks: [] },
-          { key: "tala2e3", id: 2, title: "Tala2e3 Meetings", driveLinks: [] },
+          { key: "talaee", id: 2, title: "Tala2e3 Meetings", driveLinks: [] },
           { key: "forsan", id: 3, title: "Forsan Meetings", driveLinks: [] },
         ]);
       } finally {
@@ -81,28 +81,28 @@ export default function MeetingsPage() {
   // Color themes for each section
   const sectionThemes = {
     chabiba: {
+      gradient: "from-yellow-500 to-amber-500",
+      bgGradient: "from-yellow-50 to-amber-50",
+      border: "border-yellow-500",
+      text: "text-yellow-600",
+      hover: "hover:bg-yellow-50",
+      icon: "text-yellow-600",
+    },
+    talaee: {
+      gradient: "from-red-600 to-rose-600",
+      bgGradient: "from-red-50 to-rose-50",
+      border: "border-red-500",
+      text: "text-red-600",
+      hover: "hover:bg-red-50",
+      icon: "text-red-600",
+    },
+    forsan: {
       gradient: "from-blue-600 to-indigo-600",
       bgGradient: "from-blue-50 to-indigo-50",
       border: "border-blue-500",
       text: "text-blue-600",
       hover: "hover:bg-blue-50",
       icon: "text-blue-600",
-    },
-    tala2e3: {
-      gradient: "from-purple-600 to-pink-600",
-      bgGradient: "from-purple-50 to-pink-50",
-      border: "border-purple-500",
-      text: "text-purple-600",
-      hover: "hover:bg-purple-50",
-      icon: "text-purple-600",
-    },
-    forsan: {
-      gradient: "from-orange-600 to-red-600",
-      bgGradient: "from-orange-50 to-red-50",
-      border: "border-orange-500",
-      text: "text-orange-600",
-      hover: "hover:bg-orange-50",
-      icon: "text-orange-600",
     },
   };
 

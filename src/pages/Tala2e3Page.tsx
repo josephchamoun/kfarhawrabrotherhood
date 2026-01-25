@@ -10,6 +10,8 @@ import {
   Crown,
   Award,
   Heart,
+  Loader2,
+  X,
 } from "lucide-react";
 import api from "../api/api";
 import type { User, Role, Tala2e3Role } from "../types";
@@ -36,6 +38,18 @@ export default function Tala2e3Page() {
   const [search, setSearch] = useState("");
   const [expandedUsers, setExpandedUsers] = useState<Set<number>>(new Set());
   const [showRoleModal, setShowRoleModal] = useState<number | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{
+    show: boolean;
+    type: "assign" | "end" | "activate" | "inactivate" | null;
+    userId: number | null;
+    roleId?: number;
+    userName?: string;
+  }>({ show: false, type: null, userId: null });
+  const [deleteConfirmStep, setDeleteConfirmStep] = useState<{
+    step: 0 | 1 | 2;
+    userId: number | null;
+    userName?: string;
+  }>({ step: 0, userId: null });
 
   const loggedInUser = JSON.parse(localStorage.getItem("user_info") || "null");
 
@@ -71,7 +85,7 @@ export default function Tala2e3Page() {
   const isTala2e3President = () => {
     return (
       loggedInUser?.roles?.some(
-        (r: any) => r.role_id === 3 && r.section_id === TALA2E3_SECTION_ID, // Tala2e3 President in Tala2e3 section
+        (r: any) => r.role_id === 3 && r.section_id === TALA2E3_SECTION_ID,
       ) || loggedInUser?.is_global_admin
     );
   };
@@ -100,6 +114,7 @@ export default function Tala2e3Page() {
   const assignRole = async (userId: number, roleId: number) => {
     try {
       setAssigningUserId(userId);
+      setConfirmModal({ show: false, type: null, userId: null });
       setShowRoleModal(null);
       await api.post(
         "/tala2e3/assign-role",
@@ -119,6 +134,7 @@ export default function Tala2e3Page() {
   const endRole = async (userId: number) => {
     try {
       setAssigningUserId(userId);
+      setDeleteConfirmStep({ step: 0, userId: null });
       await api.post(
         "/tala2e3/end-role",
         {
@@ -140,6 +156,7 @@ export default function Tala2e3Page() {
   const activateUser = async (userId: number) => {
     try {
       setAssigningUserId(userId);
+      setConfirmModal({ show: false, type: null, userId: null });
       await api.post(
         "/tala2e3/activate-user",
         {
@@ -161,6 +178,7 @@ export default function Tala2e3Page() {
   const inactivateUser = async (userId: number) => {
     try {
       setAssigningUserId(userId);
+      setConfirmModal({ show: false, type: null, userId: null });
       await api.post(
         "/tala2e3/inactivate-user",
         { user_id: userId },
@@ -202,7 +220,7 @@ export default function Tala2e3Page() {
           <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
             <div className="flex-1 w-full">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-lg">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-lg">
                   {user.name.charAt(0).toUpperCase()}
                 </div>
                 <div>
@@ -224,11 +242,11 @@ export default function Tala2e3Page() {
                     key={r.id}
                     className="flex items-center gap-2 sm:gap-3 mb-2"
                   >
-                    <div className="flex items-center gap-2 bg-gradient-to-r from-blue-50 to-purple-50 px-3 sm:px-4 py-2 rounded-lg border border-blue-100 w-full">
-                      {r.role_id === 2 ? (
-                        <Crown className="w-4 h-4 text-yellow-600 flex-shrink-0" />
+                    <div className="flex items-center gap-2 bg-gradient-to-r from-red-50 to-rose-50 px-3 sm:px-4 py-2 rounded-lg border border-red-100 w-full">
+                      {r.role_id === 3 ? (
+                        <Crown className="w-4 h-4 text-red-600 flex-shrink-0" />
                       ) : (
-                        <Award className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                        <Award className="w-4 h-4 text-red-600 flex-shrink-0" />
                       )}
                       <div className="flex flex-col min-w-0">
                         <div className="flex flex-wrap items-center gap-1 sm:gap-2">
@@ -257,7 +275,7 @@ export default function Tala2e3Page() {
               {hasPastRoles && (
                 <button
                   onClick={() => toggleExpanded(user.id)}
-                  className="flex items-center gap-2 mt-3 text-xs sm:text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors"
+                  className="flex items-center gap-2 mt-3 text-xs sm:text-sm text-red-600 hover:text-red-700 font-medium transition-colors"
                 >
                   {isExpanded ? (
                     <>
@@ -299,10 +317,11 @@ export default function Tala2e3Page() {
             {canManage && (
               <div className="flex flex-col gap-2 w-full sm:w-auto sm:items-end">
                 {assigningUserId === user.id ? (
-                  <div className="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto sm:mx-0" />
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="w-8 h-8 animate-spin text-red-600" />
+                  </div>
                 ) : (
                   <>
-                    {/* Custom Role Picker */}
                     <div className="relative">
                       <button
                         onClick={() =>
@@ -310,7 +329,8 @@ export default function Tala2e3Page() {
                             showRoleModal === user.id ? null : user.id,
                           )
                         }
-                        className="w-full sm:w-auto border-2 border-gray-200 px-4 py-2 rounded-lg text-sm font-medium hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all cursor-pointer bg-white flex items-center justify-between gap-2"
+                        disabled={assigningUserId !== null}
+                        className="w-full sm:w-auto border-2 border-gray-200 px-4 py-2 rounded-lg text-sm font-medium hover:border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-200 transition-all cursor-pointer bg-white flex items-center justify-between gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <span>✨ Assign Role</span>
                         <ChevronDown className="w-4 h-4" />
@@ -324,7 +344,7 @@ export default function Tala2e3Page() {
                               onClick={() => setShowRoleModal(null)}
                             ></div>
                             <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-2xl border-2 border-gray-100 z-20 max-h-96 overflow-y-auto">
-                              <div className="p-3 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-purple-50">
+                              <div className="p-3 border-b border-gray-100 bg-gradient-to-r from-red-50 to-rose-50">
                                 <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
                                   Select a Role
                                 </p>
@@ -332,11 +352,19 @@ export default function Tala2e3Page() {
                               {availableRoles.map((role) => (
                                 <button
                                   key={role.id}
-                                  onClick={() => assignRole(user.id, role.id)}
-                                  className="w-full text-left px-4 py-3 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 transition-colors border-b border-gray-50 last:border-0"
+                                  onClick={() =>
+                                    setConfirmModal({
+                                      show: true,
+                                      type: "assign",
+                                      userId: user.id,
+                                      roleId: role.id,
+                                      userName: user.name,
+                                    })
+                                  }
+                                  className="w-full text-left px-4 py-3 hover:bg-gradient-to-r hover:from-red-50 hover:to-rose-50 transition-colors border-b border-gray-50 last:border-0"
                                 >
                                   <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center flex-shrink-0">
                                       <Award className="w-4 h-4 text-white" />
                                     </div>
                                     <div className="flex-1 min-w-0">
@@ -358,8 +386,15 @@ export default function Tala2e3Page() {
                     <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                       {hasActiveNonNormalRole(user) && (
                         <button
-                          onClick={() => endRole(user.id)}
-                          className="flex items-center justify-center gap-1 px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors"
+                          onClick={() =>
+                            setDeleteConfirmStep({
+                              step: 1,
+                              userId: user.id,
+                              userName: user.name,
+                            })
+                          }
+                          disabled={assigningUserId !== null}
+                          className="flex items-center justify-center gap-1 px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <UserMinus className="w-4 h-4" />
                           End Role
@@ -368,16 +403,32 @@ export default function Tala2e3Page() {
 
                       {active ? (
                         <button
-                          onClick={() => inactivateUser(user.id)}
-                          className="flex items-center justify-center gap-1 px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                          onClick={() =>
+                            setConfirmModal({
+                              show: true,
+                              type: "inactivate",
+                              userId: user.id,
+                              userName: user.name,
+                            })
+                          }
+                          disabled={assigningUserId !== null}
+                          className="flex items-center justify-center gap-1 px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <UserMinus className="w-4 h-4" />
                           Inactivate
                         </button>
                       ) : (
                         <button
-                          onClick={() => activateUser(user.id)}
-                          className="flex items-center justify-center gap-1 px-4 py-2 bg-green-50 text-green-600 rounded-lg text-sm font-medium hover:bg-green-100 transition-colors"
+                          onClick={() =>
+                            setConfirmModal({
+                              show: true,
+                              type: "activate",
+                              userId: user.id,
+                              userName: user.name,
+                            })
+                          }
+                          disabled={assigningUserId !== null}
+                          className="flex items-center justify-center gap-1 px-4 py-2 bg-green-50 text-green-600 rounded-lg text-sm font-medium hover:bg-green-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <UserPlus className="w-4 h-4" />
                           Activate
@@ -395,28 +446,178 @@ export default function Tala2e3Page() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-red-50 to-rose-50">
       <Navbar />
+
+      {assigningUserId !== null && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 shadow-xl">
+            <Loader2 className="w-12 h-12 animate-spin text-red-600 mx-auto" />
+            <p className="mt-4 text-gray-700 font-medium">Processing...</p>
+          </div>
+        </div>
+      )}
+
+      {confirmModal.show && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800">
+                Confirm Action
+              </h2>
+              <button
+                onClick={() =>
+                  setConfirmModal({ show: false, type: null, userId: null })
+                }
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="mb-6">
+              <p className="text-gray-700">
+                {confirmModal.type === "assign" &&
+                  `Are you sure you want to assign the role to ${confirmModal.userName}?`}
+                {confirmModal.type === "activate" &&
+                  `Are you sure you want to activate ${confirmModal.userName}?`}
+                {confirmModal.type === "inactivate" &&
+                  `Are you sure you want to inactivate ${confirmModal.userName}?`}
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  if (confirmModal.type === "assign" && confirmModal.roleId) {
+                    assignRole(confirmModal.userId!, confirmModal.roleId);
+                  } else if (confirmModal.type === "activate") {
+                    activateUser(confirmModal.userId!);
+                  } else if (confirmModal.type === "inactivate") {
+                    inactivateUser(confirmModal.userId!);
+                  }
+                }}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                Confirm
+              </button>
+              <button
+                onClick={() =>
+                  setConfirmModal({ show: false, type: null, userId: null })
+                }
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteConfirmStep.step === 1 && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800">End Role</h2>
+              <button
+                onClick={() => setDeleteConfirmStep({ step: 0, userId: null })}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="bg-red-50 border-l-4 border-red-600 p-4 rounded mb-6">
+              <p className="text-red-800 font-medium">
+                Are you sure you want to end the role for this user?
+              </p>
+              <p className="text-red-700 mt-2">
+                User:{" "}
+                <span className="font-semibold">
+                  {deleteConfirmStep.userName}
+                </span>
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() =>
+                  setDeleteConfirmStep({ ...deleteConfirmStep, step: 2 })
+                }
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                Continue
+              </button>
+              <button
+                onClick={() => setDeleteConfirmStep({ step: 0, userId: null })}
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteConfirmStep.step === 2 && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800">
+                Final Confirmation
+              </h2>
+              <button
+                onClick={() => setDeleteConfirmStep({ step: 0, userId: null })}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="bg-red-50 border-l-4 border-red-600 p-4 rounded mb-6">
+              <p className="text-red-800 font-bold">
+                ⚠️ This action cannot be undone!
+              </p>
+              <p className="text-red-700 mt-2">
+                You are about to permanently end the role for:
+              </p>
+              <p className="text-red-700 font-semibold mt-1">
+                {deleteConfirmStep.userName}
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  if (deleteConfirmStep.userId) {
+                    endRole(deleteConfirmStep.userId);
+                  }
+                }}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors font-semibold"
+              >
+                End Role Permanently
+              </button>
+              <button
+                onClick={() => setDeleteConfirmStep({ step: 0, userId: null })}
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
-        {/* Header with Religious Icons */}
         <div className="text-center mb-8 sm:mb-12 relative">
           <div className="relative z-10 flex flex-col items-center">
-            {/* Logo */}
             <img
               src={tala2e3Logo}
               alt="tala2e3 Logo"
               className="w-20 h-20 sm:w-28 sm:h-28 rounded-full mb-4 object-cover shadow-lg"
             />
 
-            {/* Title */}
-            <h1 className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+            <h1 className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-red-600 to-rose-600 bg-clip-text text-transparent mb-2">
               Tala2e3
             </h1>
             <p className="text-lg sm:text-xl text-gray-600 font-medium">
               الطلائع
             </p>
 
-            {/* Subtitle with Hearts */}
             <div className="flex items-center justify-center gap-2 mt-3">
               <Heart className="w-4 h-4 text-red-500" />
               <p className="text-xs sm:text-sm text-gray-500">
@@ -432,24 +633,25 @@ export default function Tala2e3Page() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 sm:py-4 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all bg-white shadow-sm text-gray-900 placeholder-gray-400 text-sm sm:text-base"
+            className="w-full pl-12 pr-4 py-3 sm:py-4 rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 transition-all bg-white shadow-sm text-gray-900 placeholder-gray-400 text-sm sm:text-base"
             placeholder="Search members..."
+            disabled={assigningUserId !== null}
           />
         </div>
 
         <div className="mb-8 sm:mb-12">
           <div className="flex items-center gap-3 mb-4 sm:mb-6">
-            <div className="w-1 h-6 sm:h-8 bg-gradient-to-b from-blue-500 to-purple-600 rounded-full"></div>
+            <div className="w-1 h-6 sm:h-8 bg-gradient-to-b from-red-500 to-rose-600 rounded-full"></div>
             <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
               Active Members
             </h2>
-            <span className="px-2 sm:px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs sm:text-sm font-semibold">
+            <span className="px-2 sm:px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs sm:text-sm font-semibold">
               {activeUsers.length}
             </span>
           </div>
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-12 h-12 border-4 border-red-500 border-t-transparent rounded-full animate-spin"></div>
             </div>
           ) : activeUsers.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-xl border-2 border-dashed border-gray-200">
