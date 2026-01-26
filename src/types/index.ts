@@ -133,3 +133,30 @@ export interface DriveAccount {
   created_at: string;
   updated_at: string;
 }
+
+export interface Moneybox {
+id: number;
+section_id: number;
+section_name: string;
+amount: number;
+}
+
+
+export interface UserInfo {
+id: number;
+is_global_admin: boolean;
+is_super_admin: boolean;
+roles: UserRole[];
+}
+
+export interface Election {
+id: number;
+section_id: number;
+section_name: string; // Loaded from backend with relation
+title: string;
+description?: string;
+election_date: string;
+created_by: number;
+created_at: string;
+updated_at: string;
+}

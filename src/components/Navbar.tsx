@@ -12,11 +12,13 @@ import {
   X,
   Phone,
   ChevronDown,
+  VoteIcon,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { UserGroupIcon } from "@heroicons/react/24/outline";
 import MainLogo from "../assets/mainlogo.jpg";
 import { MdAccountCircle } from "react-icons/md";
+import { BiDollar } from "react-icons/bi";
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -50,6 +52,8 @@ export default function Navbar() {
     { to: "/users", label: "Users", icon: Users },
     { to: "/profile", label: "Profile", icon: Users },
     { to: "/events", label: "Events", icon: Calendar },
+    { to: "/money", label: "Money", icon: BiDollar },
+    { to: "/elections", label: "Elections", icon: VoteIcon },
   ];
 
   // Secondary navigation items (in "More" dropdown)
