@@ -344,38 +344,39 @@ export default function AddEventModal({
                     </div>
 
                     {/* Financial Fields */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                      <div>
-                        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                          <FaDollarSign className="text-red-600" />
-                          Total Spent
-                        </label>
-                        <input
-                          type="number"
-                          name="total_spent"
-                          placeholder="0"
-                          value={form.total_spent}
-                          onChange={handleFieldChange}
-                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all text-gray-900"
-                        />
-                      </div>
+                    {isGlobalAdmin && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                          <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                            <FaDollarSign className="text-red-600" />
+                            Total Spent
+                          </label>
+                          <input
+                            type="number"
+                            name="total_spent"
+                            placeholder="0"
+                            value={form.total_spent}
+                            onChange={handleFieldChange}
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all text-gray-900"
+                          />
+                        </div>
 
-                      <div>
-                        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                          <FaDollarSign className="text-green-600" />
-                          Total Revenue
-                        </label>
-                        <input
-                          type="number"
-                          name="total_revenue"
-                          placeholder="0"
-                          value={form.total_revenue}
-                          onChange={handleFieldChange}
-                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all text-gray-900"
-                        />
+                        <div>
+                          <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                            <FaDollarSign className="text-green-600" />
+                            Total Revenue
+                          </label>
+                          <input
+                            type="number"
+                            name="total_revenue"
+                            placeholder="0"
+                            value={form.total_revenue}
+                            onChange={handleFieldChange}
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all text-gray-900"
+                          />
+                        </div>
                       </div>
-                    </div>
-
+                    )}
                     {/* Notes */}
                     <div>
                       <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
