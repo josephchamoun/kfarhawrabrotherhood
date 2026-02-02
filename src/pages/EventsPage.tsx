@@ -36,6 +36,43 @@ const AMIN_SANDOU2 = "Amin sandou2";
 const WAKIL_TANCHI2A = "wakil tanchi2a";
 
 // ---------------------------
+// Determine user permissions for AddEventModal
+// ---------------------------
+const roles: UserRole[] = currentUser.roles || [];
+
+const hasRole = (role: string, sectionId?: number) =>
+  roles.some(
+    (r) =>
+      r.role_name === role &&
+      r.end_date === null &&
+      (!sectionId || r.section_id === sectionId),
+  );
+
+const isHighAdmin = currentUser.is_global_admin === true;
+
+// Chabiba leaders in section 1
+const isChabibaLeaderSection1 =
+  hasRole("Chabiba President", 1) ||
+  hasRole("Ne2b al Ra2is", 1) ||
+  hasRole("Amin Ser", 1);
+
+// Other leaders (section 2 or 3)
+const userSection =
+  hasRole("Tala2e3 President", 2) ||
+  hasRole("Ne2b al Ra2is", 2) ||
+  hasRole("Amin Ser", 2)
+    ? 2
+    : hasRole("Forsan President", 3) ||
+        hasRole("Ne2b al Ra2is", 3) ||
+        hasRole("Amin Ser", 3)
+      ? 3
+      : null;
+
+// Decide what the user can do
+const canPickAnySections = isHighAdmin || isChabibaLeaderSection1;
+const forcedSection = canPickAnySections ? null : userSection;
+
+// ---------------------------
 // Component
 // ---------------------------
 export default function EventsPage() {
@@ -50,6 +87,7 @@ export default function EventsPage() {
   const [sectionFilter, setSectionFilter] = useState<"all" | "1" | "2" | "3">(
     "all",
   );
+
   type DateFilter = "all" | "upcoming" | "past";
 
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
@@ -186,6 +224,20 @@ export default function EventsPage() {
     return event < today;
   };
 
+  const isChabibaLeaderSection1 =
+    hasRole(CHABIBA_PRESIDENT, 1) || hasRole(NE2B, 1) || hasRole(AMIN_SER, 1);
+
+  const isLeaderAnySection =
+    hasRole(TALA2E3_PRESIDENT, 2) ||
+    hasRole(FORSAN_PRESIDENT, 3) ||
+    hasRole(NE2B, 2) ||
+    hasRole(NE2B, 3) ||
+    hasRole(AMIN_SER, 2) ||
+    hasRole(AMIN_SER, 3);
+
+  const canShowAddButton =
+    isHighAdmin() || isChabibaLeaderSection1 || isLeaderAnySection;
+
   // ---------------------------
   // Permissions
   // ---------------------------
@@ -258,18 +310,9 @@ export default function EventsPage() {
 
     return new Date() > lockDate;
   };
-  const isAminSerAnySection = () => {
-    return roles.some((r) => r.role_name === AMIN_SER && r.end_date === null);
-  };
+
   const calculateProfit = (event: Event) =>
     parseFloat(event.total_revenue) - parseFloat(event.total_spent);
-
-  const canShowAddButton =
-    isHighAdmin() ||
-    isPresidentOrNe2b(1) ||
-    isPresidentOrNe2b(2) ||
-    isPresidentOrNe2b(3) ||
-    isAminSerAnySection();
 
   // Get unique years from events
   const availableYears = Array.from(
@@ -280,29 +323,34 @@ export default function EventsPage() {
     ),
   ).sort((a, b) => parseInt(b) - parseInt(a));
 
-  const filteredEvents = events.filter((event) => {
-    const text = (
-      event.title +
-      event.description +
-      (event.notes || "")
-    ).toLowerCase();
+  const filteredEvents = events
+    .filter((event) => {
+      const text = (
+        event.title +
+        event.description +
+        (event.notes || "")
+      ).toLowerCase();
 
-    const matchesSearch = text.includes(searchTerm.toLowerCase());
+      const matchesSearch = text.includes(searchTerm.toLowerCase());
 
-    const matchesSection =
-      sectionFilter === "all" ||
-      event.sections.some((s) => String(s.id) === sectionFilter);
+      const matchesSection =
+        sectionFilter === "all" ||
+        event.sections.some((s) => String(s.id) === sectionFilter);
 
-    const eventYear = new Date(event.event_date).getFullYear().toString();
-    const matchesYear = yearFilter === "all" || eventYear === yearFilter;
+      const eventYear = new Date(event.event_date).getFullYear().toString();
+      const matchesYear = yearFilter === "all" || eventYear === yearFilter;
 
-    const matchesDate =
-      dateFilter === "all" ||
-      (dateFilter === "upcoming" && isUpcomingEvent(event.event_date)) ||
-      (dateFilter === "past" && isPastEvent(event.event_date));
+      const matchesDate =
+        dateFilter === "all" ||
+        (dateFilter === "upcoming" && isUpcomingEvent(event.event_date)) ||
+        (dateFilter === "past" && isPastEvent(event.event_date));
 
-    return matchesSearch && matchesSection && matchesYear && matchesDate;
-  });
+      return matchesSearch && matchesSection && matchesYear && matchesDate;
+    })
+    .sort(
+      (a, b) =>
+        new Date(b.event_date).getTime() - new Date(a.event_date).getTime(),
+    );
 
   // Calculate totals
   const totalRevenue = filteredEvents.reduce(
@@ -853,12 +901,10 @@ export default function EventsPage() {
       <AddEventModal
         open={isAddOpen}
         onClose={() => setIsAddOpen(false)}
-        onCreated={(newEvent) => {
-          setEvents((prev) => [newEvent, ...prev]);
-        }}
-        isGlobalAdmin={
-          JSON.parse(localStorage.getItem("user_info") || "{}").is_global_admin
-        }
+        onCreated={(newEvent) => setEvents((prev) => [newEvent, ...prev])}
+        isGlobalAdmin={currentUser.is_global_admin}
+        canPickAnySections={canPickAnySections}
+        forcedSection={forcedSection} // ✅ use the actual variable
       />
 
       <EditEventDetailsModal

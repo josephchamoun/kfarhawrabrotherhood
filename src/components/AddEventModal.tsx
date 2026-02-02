@@ -20,6 +20,8 @@ interface Props {
   onClose: () => void;
   onCreated: (event: Event) => void;
   isGlobalAdmin: boolean;
+  canPickAnySections?: boolean; // new
+  forcedSection?: number | null; // new
 }
 
 export default function AddEventModal({
@@ -27,6 +29,8 @@ export default function AddEventModal({
   onClose,
   onCreated,
   isGlobalAdmin,
+  canPickAnySections = false, // default to false
+  forcedSection = null, // default to null
 }: Props) {
   const now = new Date().toISOString().slice(0, 10);
 
@@ -114,7 +118,11 @@ export default function AddEventModal({
         notes: form.notes,
         drive_link: form.drive_link,
         shared_event: form.shared_event,
-        sections: isGlobalAdmin ? sectionsToSend : undefined,
+        sections: forcedSection
+          ? [forcedSection]
+          : isGlobalAdmin || canPickAnySections
+            ? selectedSections
+            : undefined,
       };
 
       const res = await api.post("/addevent", payload, {
@@ -249,52 +257,56 @@ export default function AddEventModal({
             </div>
 
             {/* Global Admin Section Selector */}
-            {(isGlobalAdmin || isChabibaAminSer()) && (
-              <div>
-                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                  <FaUsers className="text-blue-600" />
-                  Select Sections
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { id: 1, name: "Chabiba" },
-                    { id: 2, name: "Tala2e3" },
-                    { id: 3, name: "Forsan" },
-                    { id: 4, name: "Shared (All)" },
-                  ].map((section) => (
-                    <label
-                      key={section.id}
-                      className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                        selectedSections.includes(section.id)
-                          ? "border-blue-600 bg-blue-50"
-                          : "border-gray-200 hover:border-blue-300 hover:bg-gray-50"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedSections.includes(section.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedSections([
-                              ...selectedSections,
-                              section.id,
-                            ]);
-                          } else {
-                            setSelectedSections(
-                              selectedSections.filter((s) => s !== section.id),
-                            );
-                          }
-                        }}
-                        className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                      />
-                      <span className="font-medium text-gray-700">
-                        {section.name}
-                      </span>
-                    </label>
-                  ))}
+            {(isGlobalAdmin || isChabibaAminSer() || canPickAnySections) &&
+              !forcedSection && (
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                    <FaUsers className="text-blue-600" />
+                    Select Sections
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { id: 1, name: "Chabiba" },
+                      { id: 2, name: "Tala2e3" },
+                      { id: 3, name: "Forsan" },
+                      { id: 4, name: "Shared (All)" },
+                    ].map((section) => (
+                      <label
+                        key={section.id}
+                        className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                          selectedSections.includes(section.id)
+                            ? "border-blue-600 bg-blue-50"
+                            : "border-gray-200 hover:border-blue-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedSections.includes(section.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedSections([
+                                ...selectedSections,
+                                section.id,
+                              ]);
+                            } else {
+                              setSelectedSections(
+                                selectedSections.filter(
+                                  (s) => s !== section.id,
+                                ),
+                              );
+                            }
+                          }}
+                          className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                        />
+                        <span className="font-medium text-gray-700">
+                          {section.name}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            {forcedSection && <input type="hidden" value={forcedSection} />}
 
             {/* Shared Event Checkbox (Non-Admin) */}
             {!isGlobalAdmin && !isRestrictedPresident() && (
