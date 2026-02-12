@@ -145,9 +145,13 @@ export default function EventsPage() {
   // ---------------------------
   const roles: UserRole[] = currentUser.roles || [];
   const isAminSer = (event: Event) => {
+    // ✅ Amin Ser of section 1 = global
+    if (hasRole(AMIN_SER, 1)) return true;
+
     if (isSharedEvent(event)) return hasRole(AMIN_SER, 1);
     return event.sections.some((s) => hasRole(AMIN_SER, s.id));
   };
+
   const isWakilTanchi2a = (event: Event) => {
     if (isSharedEvent(event)) return false;
 
@@ -248,18 +252,28 @@ export default function EventsPage() {
   const canEditFinancialsWithDate = (event: Event) =>
     !isLocked(event.event_date) && canEditFinancials(event);
 
-  const canDeleteWithDate = (event: Event) =>
-    !isLocked(event.event_date) && canDelete(event);
+  const canDeleteWithDate = (event: Event) => {
+    // High Admin can ALWAYS delete
+    if (isHighAdmin()) return true;
+
+    // If locked (>= 30 days), nobody else can
+    if (isEventLocked(event)) return false;
+
+    // Before 30 days → use extended old rules (including Amin Ser 1)
+    return canDelete(event);
+  };
 
   const canEditDetails = (event: Event) => {
     if (isEventLocked(event)) return false;
     if (isHighAdmin()) return true;
 
+    // ✅ Amin Ser of Chabiba (section 1) can edit EVERYTHING
+    if (hasRole(AMIN_SER, 1)) return true;
+
     // Wakil Tanchi2a → description only
     if (isWakilTanchi2a(event)) return true;
 
-    if (isSharedEvent(event))
-      return isPresidentOrNe2b(1) || hasRole(AMIN_SER, 1);
+    if (isSharedEvent(event)) return isPresidentOrNe2b(1);
 
     return event.sections.some(
       (s) => isPresidentOrNe2b(s.id) || hasRole(AMIN_SER, s.id),
@@ -281,6 +295,11 @@ export default function EventsPage() {
   const canDelete = (event: Event) => {
     if (isHighAdmin()) return true;
     if (isEventLocked(event)) return false;
+
+    // ✅ Amin Ser of Chabiba (section 1) before 30 days
+    if (hasRole(AMIN_SER, 1)) return true;
+
+    // Old rules
     if (isSharedEvent(event)) return isPresidentOrNe2b(1);
     return event.sections.some((s) => isPresidentOrNe2b(s.id));
   };
