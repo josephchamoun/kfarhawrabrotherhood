@@ -129,7 +129,17 @@ const globalStyles = `
   .delay-1 { animation-delay: 0.15s; }
   .delay-2 { animation-delay: 0.30s; }
   .delay-3 { animation-delay: 0.45s; }
-  .delay-4 { animation-delay: 0.60s; }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+
+  @media (max-width: 768px) {
+    .stats-grid {
+      grid-template-columns: 1fr;
+    }
+  }
 `;
 
 export default function HomePage() {
@@ -421,13 +431,7 @@ export default function HomePage() {
             </p>
 
             {/* Stats */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(3, 1fr)",
-                gap: 24,
-              }}
-            >
+            <div className="stats-grid">
               {[
                 {
                   label: "Members",

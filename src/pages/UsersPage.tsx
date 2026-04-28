@@ -86,6 +86,48 @@ const globalStyles = `
     box-shadow: 0 16px 40px rgba(201,168,76,0.15);
   }
 
+  /* Mobile responsive user card */
+  @media (max-width: 768px) {
+    .member-card {
+      padding: 14px 18px;
+    }
+    .member-card .user-layout {
+      flex-direction: column;
+      align-items: stretch;
+      text-align: left;
+      gap: 12px;
+    }
+    .member-card .member-avatar {
+      width: 40px;
+      height: 40px;
+      font-size: 1.1rem;
+    }
+    .member-card .user-info {
+      text-align: left;
+    }
+    .member-card .user-name,
+    .member-card .user-email {
+      white-space: normal !important;
+      overflow: visible !important;
+      text-overflow: clip !important;
+    }
+    .member-card .user-actions {
+      flex-direction: row;
+      flex-wrap: wrap;
+      justify-content: flex-start;
+      width: 100%;
+      gap: 8px;
+    }
+    .member-card .user-actions button {
+      flex: 1 1 auto;
+      min-width: 110px;
+    }
+    .member-card .meta-row,
+    .member-card .section-badges {
+      justify-content: flex-start;
+    }
+  }
+
   /* Admin card accent */
   .admin-card {
     border-top-color: var(--cedar);
@@ -564,17 +606,20 @@ export default function UsersPage() {
 
     return (
       <div key={u.id} className={`member-card ${isAdmin ? "admin-card" : ""}`}>
-        <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+        <div
+          className="user-layout"
+          style={{ display: "flex", gap: 16, alignItems: "flex-start" }}
+        >
           {/* Avatar */}
           <div className={`member-avatar ${isAdmin ? "admin-avatar" : ""}`}>
             {u.name.charAt(0).toUpperCase()}
           </div>
 
           {/* Info */}
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="user-info" style={{ flex: 1, minWidth: 0 }}>
             <div style={{ marginBottom: 6 }}>
               <h3
-                className="font-display"
+                className="font-display user-name"
                 style={{
                   fontSize: "1.15rem",
                   fontWeight: 700,
@@ -588,6 +633,7 @@ export default function UsersPage() {
                 {u.name}
               </h3>
               <p
+                className="user-email"
                 style={{
                   fontSize: 13,
                   color: "#888",
@@ -602,16 +648,44 @@ export default function UsersPage() {
             </div>
 
             {/* Meta row */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 16px", marginBottom: 10 }}>
+            <div
+              className="meta-row"
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "6px 16px",
+                marginBottom: 10,
+              }}
+            >
               {u.phone && (
-                <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "#777" }}>
-                  <PhoneIcon style={{ width: 13, height: 13, color: "var(--gold-dk)" }} />
+                <span
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    fontSize: 12,
+                    color: "#777",
+                  }}
+                >
+                  <PhoneIcon
+                    style={{ width: 13, height: 13, color: "var(--gold-dk)" }}
+                  />
                   {u.phone}
                 </span>
               )}
               {u.date_of_birth && (
-                <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "#777" }}>
-                  <CakeIcon style={{ width: 13, height: 13, color: "var(--gold-dk)" }} />
+                <span
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    fontSize: 12,
+                    color: "#777",
+                  }}
+                >
+                  <CakeIcon
+                    style={{ width: 13, height: 13, color: "var(--gold-dk)" }}
+                  />
                   Age {calculateAge(u.date_of_birth)}
                 </span>
               )}
@@ -619,36 +693,79 @@ export default function UsersPage() {
 
             {/* Section badges */}
             {activeSections && activeSections.length > 0 && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
-                <TagIcon style={{ width: 12, height: 12, color: "var(--gold-dk)", flexShrink: 0 }} />
-                {Array.from(new Set(activeSections.map((s) => s.name))).map((sectionName) => (
-                  <span key={sectionName} className="section-badge">{sectionName}</span>
-                ))}
+              <div
+                className="section-badges"
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 6,
+                  alignItems: "center",
+                }}
+              >
+                <TagIcon
+                  style={{
+                    width: 12,
+                    height: 12,
+                    color: "var(--gold-dk)",
+                    flexShrink: 0,
+                  }}
+                />
+                {Array.from(new Set(activeSections.map((s) => s.name))).map(
+                  (sectionName) => (
+                    <span key={sectionName} className="section-badge">
+                      {sectionName}
+                    </span>
+                  ),
+                )}
               </div>
             )}
           </div>
 
           {/* Actions */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end", flexShrink: 0 }}>
-            {!u.is_super_admin && (isSuperAdmin || (isAdmin && !u.is_global_admin)) && (
-              <button className="btn-view" onClick={() => navigate(`/users/${u.id}`)}>
-                View
-              </button>
-            )}
+          <div
+            className="user-actions"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+              alignItems: "flex-end",
+              flexShrink: 1,
+              minWidth: 0,
+            }}
+          >
+            {!u.is_super_admin &&
+              (isSuperAdmin || (isAdmin && !u.is_global_admin)) && (
+                <button
+                  className="btn-view"
+                  onClick={() => navigate(`/users/${u.id}`)}
+                >
+                  View
+                </button>
+              )}
             {!isAdmin && canAddSection() && (
-              <button className="btn-section" onClick={() => setSelectedUserId(u.id)}>
+              <button
+                className="btn-section"
+                onClick={() => setSelectedUserId(u.id)}
+              >
                 + Section
               </button>
             )}
-            {!u.is_super_admin && (isSuperAdmin || (isAdmin && !u.is_global_admin)) && (
-              <button
-                className="btn-delete"
-                onClick={() => setDeleteConfirmStep({ step: 1, userId: u.id, userName: u.name })}
-                title="Delete member"
-              >
-                <TrashIcon style={{ width: 16, height: 16 }} />
-              </button>
-            )}
+            {!u.is_super_admin &&
+              (isSuperAdmin || (isAdmin && !u.is_global_admin)) && (
+                <button
+                  className="btn-delete"
+                  onClick={() =>
+                    setDeleteConfirmStep({
+                      step: 1,
+                      userId: u.id,
+                      userName: u.name,
+                    })
+                  }
+                  title="Delete member"
+                >
+                  <TrashIcon style={{ width: 16, height: 16 }} />
+                </button>
+              )}
           </div>
         </div>
       </div>
@@ -663,38 +780,95 @@ export default function UsersPage() {
         <Navbar />
 
         {/* ── Slim info bar ── */}
-        <div style={{
-          background: "white",
-          borderBottom: "1px solid #E8D5A3",
-          padding: "10px 24px",
-        }}>
-          <div style={{
-            maxWidth: 1080, margin: "0 auto",
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            gap: 12, flexWrap: "wrap",
-          }}>
+        <div
+          style={{
+            background: "white",
+            borderBottom: "1px solid #E8D5A3",
+            padding: "10px 24px",
+          }}
+        >
+          <div
+            style={{
+              maxWidth: 1080,
+              margin: "0 auto",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              flexWrap: "wrap",
+            }}
+          >
             {/* Left: page title */}
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ color: "var(--gold)", fontSize: 13, lineHeight: 1 }}>✝</span>
-              <h1 className="font-display" style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--ink)" }}>
+              <span
+                style={{ color: "var(--gold)", fontSize: 13, lineHeight: 1 }}
+              >
+                ✝
+              </span>
+              <h1
+                className="font-display"
+                style={{
+                  fontSize: "1.1rem",
+                  fontWeight: 700,
+                  color: "var(--ink)",
+                }}
+              >
                 Members
               </h1>
-              <span style={{
-                fontSize: 11, fontWeight: 700, color: "var(--gold-dk)",
-                background: "rgba(201,168,76,0.1)", border: "1px solid rgba(201,168,76,0.25)",
-                borderRadius: 999, padding: "2px 10px",
-                fontFamily: "'Lato', sans-serif", letterSpacing: "0.04em",
-              }}>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: "var(--gold-dk)",
+                  background: "rgba(201,168,76,0.1)",
+                  border: "1px solid rgba(201,168,76,0.25)",
+                  borderRadius: 999,
+                  padding: "2px 10px",
+                  fontFamily: "'Lato', sans-serif",
+                  letterSpacing: "0.04em",
+                }}
+              >
                 {users.length}
               </span>
             </div>
 
             {/* Right: syncing indicator */}
             {syncing && (
-              <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#aaa", fontSize: 12, fontWeight: 700, fontFamily: "'Lato', sans-serif" }}>
-                <svg style={{ width: 12, height: 12, animation: "spin 0.8s linear infinite", flexShrink: 0 }} viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25" />
-                  <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  color: "#aaa",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  fontFamily: "'Lato', sans-serif",
+                }}
+              >
+                <svg
+                  style={{
+                    width: 12,
+                    height: 12,
+                    animation: "spin 0.8s linear infinite",
+                    flexShrink: 0,
+                  }}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeOpacity="0.25"
+                  />
+                  <path
+                    d="M4 12a8 8 0 018-8"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                  />
                 </svg>
                 Syncing
               </div>
@@ -704,11 +878,20 @@ export default function UsersPage() {
 
         {/* ── Error banner ── */}
         {error && (
-          <div style={{ maxWidth: 1080, margin: "24px auto 0", padding: "0 24px" }}>
-            <div style={{
-              background: "#FEF2F2", borderLeft: "4px solid #DC2626",
-              borderRadius: 12, padding: "14px 18px", color: "#B91C1C", fontWeight: 700, fontSize: 14,
-            }}>
+          <div
+            style={{ maxWidth: 1080, margin: "24px auto 0", padding: "0 24px" }}
+          >
+            <div
+              style={{
+                background: "#FEF2F2",
+                borderLeft: "4px solid #DC2626",
+                borderRadius: 12,
+                padding: "14px 18px",
+                color: "#B91C1C",
+                fontWeight: 700,
+                fontSize: 14,
+              }}
+            >
               {error}
             </div>
           </div>
@@ -716,9 +899,25 @@ export default function UsersPage() {
 
         {/* ── Loading state ── */}
         {loading && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "96px 24px", gap: 20 }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "96px 24px",
+              gap: 20,
+            }}
+          >
             <div className="spinner" />
-            <p className="font-display" style={{ color: "var(--gold-dk)", fontSize: "1.2rem", fontStyle: "italic" }}>
+            <p
+              className="font-display"
+              style={{
+                color: "var(--gold-dk)",
+                fontSize: "1.2rem",
+                fontStyle: "italic",
+              }}
+            >
               Gathering the brotherhood…
             </p>
           </div>
@@ -728,25 +927,41 @@ export default function UsersPage() {
         {!loading && (
           <div className="cedar-bg" style={{ padding: "40px 24px 64px" }}>
             <div style={{ maxWidth: 1080, margin: "0 auto" }}>
-
               {/* Search & filters panel */}
-              <div style={{
-                background: "white",
-                border: "1px solid #E8D5A3",
-                borderTop: "3px solid var(--gold)",
-                borderRadius: 20,
-                padding: "24px 28px",
-                marginBottom: 32,
-                boxShadow: "0 4px 24px rgba(201,168,76,0.08)",
-              }}>
+              <div
+                style={{
+                  background: "white",
+                  border: "1px solid #E8D5A3",
+                  borderTop: "3px solid var(--gold)",
+                  borderRadius: 20,
+                  padding: "24px 28px",
+                  marginBottom: 32,
+                  boxShadow: "0 4px 24px rgba(201,168,76,0.08)",
+                }}
+              >
                 {/* Top row */}
-                <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: showFilters ? 20 : 0 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 12,
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    marginBottom: showFilters ? 20 : 0,
+                  }}
+                >
                   {/* Search */}
                   <div style={{ flex: 1, minWidth: 200, position: "relative" }}>
-                    <MagnifyingGlassIcon style={{
-                      position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)",
-                      width: 18, height: 18, color: "var(--gold-dk)",
-                    }} />
+                    <MagnifyingGlassIcon
+                      style={{
+                        position: "absolute",
+                        left: 14,
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        width: 18,
+                        height: 18,
+                        color: "var(--gold-dk)",
+                      }}
+                    />
                     <input
                       type="text"
                       className="search-input"
@@ -767,7 +982,10 @@ export default function UsersPage() {
 
                   {/* Add member */}
                   {isGlobalAdmin && (
-                    <button className="btn-add-member" onClick={() => setShowAddUser(true)}>
+                    <button
+                      className="btn-add-member"
+                      onClick={() => setShowAddUser(true)}
+                    >
                       <PlusIcon style={{ width: 18, height: 18 }} />
                       Add Member
                     </button>
@@ -775,18 +993,41 @@ export default function UsersPage() {
                 </div>
 
                 {/* Result count */}
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: showFilters ? 0 : 10 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    marginTop: showFilters ? 0 : 10,
+                  }}
+                >
                   <p style={{ fontSize: 13, color: "#aaa", fontWeight: 700 }}>
                     Showing{" "}
-                    <span style={{ color: "var(--ink)" }}>{globalAdmins.length + otherUsers.length}</span>
-                    {" "}of{" "}
-                    <span style={{ color: "var(--ink)" }}>{users.length}</span>
-                    {" "}members
+                    <span style={{ color: "var(--ink)" }}>
+                      {globalAdmins.length + otherUsers.length}
+                    </span>{" "}
+                    of{" "}
+                    <span style={{ color: "var(--ink)" }}>{users.length}</span>{" "}
+                    members
                   </p>
-                  {(searchQuery || selectedSection !== "all" || selectedRole !== "all") && (
+                  {(searchQuery ||
+                    selectedSection !== "all" ||
+                    selectedRole !== "all") && (
                     <button
-                      onClick={() => { setSearchQuery(""); setSelectedSection("all"); setSelectedRole("all"); }}
-                      style={{ fontSize: 12, color: "var(--gold-dk)", fontWeight: 700, background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}
+                      onClick={() => {
+                        setSearchQuery("");
+                        setSelectedSection("all");
+                        setSelectedRole("all");
+                      }}
+                      style={{
+                        fontSize: 12,
+                        color: "var(--gold-dk)",
+                        fontWeight: 700,
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        textDecoration: "underline",
+                      }}
                     >
                       Clear filters
                     </button>
@@ -795,20 +1036,44 @@ export default function UsersPage() {
 
                 {/* Filter panels */}
                 {showFilters && (
-                  <div style={{ borderTop: "1px solid #E8D5A3", paddingTop: 20, marginTop: 16, display: "flex", flexDirection: "column", gap: 18 }}>
+                  <div
+                    style={{
+                      borderTop: "1px solid #E8D5A3",
+                      paddingTop: 20,
+                      marginTop: 16,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 18,
+                    }}
+                  >
                     {/* Sections */}
                     <div>
-                      <p style={{ fontSize: 11, fontWeight: 700, color: "var(--cedar)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 10 }}>
+                      <p
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: "var(--cedar)",
+                          letterSpacing: "0.12em",
+                          textTransform: "uppercase",
+                          marginBottom: 10,
+                        }}
+                      >
                         Section
                       </p>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      <div
+                        style={{ display: "flex", flexWrap: "wrap", gap: 8 }}
+                      >
                         {["all", "no-section", ...allSections].map((s) => (
                           <button
                             key={s}
                             className={`filter-pill ${selectedSection === s ? "active" : ""}`}
                             onClick={() => setSelectedSection(s)}
                           >
-                            {s === "all" ? "All Members" : s === "no-section" ? "No Section" : s}
+                            {s === "all"
+                              ? "All Members"
+                              : s === "no-section"
+                                ? "No Section"
+                                : s}
                           </button>
                         ))}
                       </div>
@@ -817,10 +1082,21 @@ export default function UsersPage() {
                     {/* Roles */}
                     {allRoles.length > 0 && (
                       <div>
-                        <p style={{ fontSize: 11, fontWeight: 700, color: "var(--cedar)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 10 }}>
+                        <p
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            color: "var(--cedar)",
+                            letterSpacing: "0.12em",
+                            textTransform: "uppercase",
+                            marginBottom: 10,
+                          }}
+                        >
                           Role
                         </p>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                        <div
+                          style={{ display: "flex", flexWrap: "wrap", gap: 8 }}
+                        >
                           <button
                             className={`filter-pill ${selectedRole === "all" ? "active-cedar" : ""}`}
                             onClick={() => setSelectedRole("all")}
@@ -845,65 +1121,140 @@ export default function UsersPage() {
 
               {/* ── Global Admins group ── */}
               {isSuperAdmin && globalAdmins.length > 0 && (
-                <div style={{
-                  background: "white",
-                  border: "1px solid #E8D5A3",
-                  borderTop: "3px solid var(--cedar)",
-                  borderRadius: 20,
-                  padding: "28px",
-                  marginBottom: 24,
-                  boxShadow: "0 4px 24px rgba(45,80,22,0.06)",
-                }}>
+                <div
+                  style={{
+                    background: "white",
+                    border: "1px solid #E8D5A3",
+                    borderTop: "3px solid var(--cedar)",
+                    borderRadius: 20,
+                    padding: "28px",
+                    marginBottom: 24,
+                    boxShadow: "0 4px 24px rgba(45,80,22,0.06)",
+                  }}
+                >
                   <div className="group-header">
-                    <div className="group-icon" style={{ background: "linear-gradient(135deg, var(--cedar), var(--cedar-lt))" }}>
+                    <div
+                      className="group-icon"
+                      style={{
+                        background:
+                          "linear-gradient(135deg, var(--cedar), var(--cedar-lt))",
+                      }}
+                    >
                       <span>✝</span>
                     </div>
                     <div>
-                      <h2 className="font-display" style={{ fontSize: "1.4rem", fontWeight: 700, color: "var(--ink)", marginBottom: 4 }}>
+                      <h2
+                        className="font-display"
+                        style={{
+                          fontSize: "1.4rem",
+                          fontWeight: 700,
+                          color: "var(--ink)",
+                          marginBottom: 4,
+                        }}
+                      >
                         Global Admins
                       </h2>
-                      <span className="group-count" style={{ background: "rgba(45,80,22,0.08)", color: "var(--cedar)" }}>
+                      <span
+                        className="group-count"
+                        style={{
+                          background: "rgba(45,80,22,0.08)",
+                          color: "var(--cedar)",
+                        }}
+                      >
                         {globalAdmins.length} leaders
                       </span>
                     </div>
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 12,
+                    }}
+                  >
                     {globalAdmins.map((u) => renderUser(u, true))}
                   </div>
                 </div>
               )}
 
               {/* ── Community Members group ── */}
-              <div style={{
-                background: "white",
-                border: "1px solid #E8D5A3",
-                borderTop: "3px solid var(--gold)",
-                borderRadius: 20,
-                padding: "28px",
-                boxShadow: "0 4px 24px rgba(201,168,76,0.06)",
-              }}>
+              <div
+                style={{
+                  background: "white",
+                  border: "1px solid #E8D5A3",
+                  borderTop: "3px solid var(--gold)",
+                  borderRadius: 20,
+                  padding: "28px",
+                  boxShadow: "0 4px 24px rgba(201,168,76,0.06)",
+                }}
+              >
                 <div className="group-header">
-                  <div className="group-icon" style={{ background: "linear-gradient(135deg, var(--gold-dk), var(--gold))" }}>
+                  <div
+                    className="group-icon"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, var(--gold-dk), var(--gold))",
+                    }}
+                  >
                     <span style={{ fontSize: "1.2rem" }}>👥</span>
                   </div>
                   <div>
-                    <h2 className="font-display" style={{ fontSize: "1.4rem", fontWeight: 700, color: "var(--ink)", marginBottom: 4 }}>
+                    <h2
+                      className="font-display"
+                      style={{
+                        fontSize: "1.4rem",
+                        fontWeight: 700,
+                        color: "var(--ink)",
+                        marginBottom: 4,
+                      }}
+                    >
                       Community Members
                     </h2>
-                    <span className="group-count" style={{ background: "rgba(201,168,76,0.1)", color: "var(--gold-dk)" }}>
+                    <span
+                      className="group-count"
+                      style={{
+                        background: "rgba(201,168,76,0.1)",
+                        color: "var(--gold-dk)",
+                      }}
+                    >
                       {otherUsers.length} brothers
                     </span>
                   </div>
                 </div>
 
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 12 }}
+                >
                   {otherUsers.length > 0 ? (
                     otherUsers.map((u) => renderUser(u))
                   ) : (
                     <div style={{ textAlign: "center", padding: "48px 24px" }}>
-                      <div className="font-display" style={{ fontSize: "3rem", color: "var(--gold)", opacity: 0.4, marginBottom: 12 }}>✝</div>
-                      <p className="font-display" style={{ fontSize: "1.3rem", color: "var(--ink)", marginBottom: 8 }}>No members found</p>
-                      <p style={{ fontSize: 14, color: "#aaa", fontWeight: 300 }}>Try adjusting your search or filters</p>
+                      <div
+                        className="font-display"
+                        style={{
+                          fontSize: "3rem",
+                          color: "var(--gold)",
+                          opacity: 0.4,
+                          marginBottom: 12,
+                        }}
+                      >
+                        ✝
+                      </div>
+                      <p
+                        className="font-display"
+                        style={{
+                          fontSize: "1.3rem",
+                          color: "var(--ink)",
+                          marginBottom: 8,
+                        }}
+                      >
+                        No members found
+                      </p>
+                      <p
+                        style={{ fontSize: 14, color: "#aaa", fontWeight: 300 }}
+                      >
+                        Try adjusting your search or filters
+                      </p>
                     </div>
                   )}
                 </div>
@@ -911,10 +1262,16 @@ export default function UsersPage() {
 
               {/* ── Ornamental footer strip ── */}
               <div style={{ textAlign: "center", marginTop: 48 }}>
-                <p className="ornament" style={{
-                  fontSize: 11, letterSpacing: "0.2em", fontWeight: 700,
-                  color: "var(--cedar)", textTransform: "uppercase",
-                }}>
+                <p
+                  className="ornament"
+                  style={{
+                    fontSize: 11,
+                    letterSpacing: "0.2em",
+                    fontWeight: 700,
+                    color: "var(--cedar)",
+                    textTransform: "uppercase",
+                  }}
+                >
                   Kfarhaoura · Lebanon · Est. 2026
                 </p>
               </div>
@@ -923,14 +1280,24 @@ export default function UsersPage() {
         )}
 
         {/* ── Footer ── */}
-        <footer style={{
-          background: "var(--ink)",
-          borderTop: "2px solid var(--gold-dk)",
-          padding: "32px 24px",
-          textAlign: "center",
-        }}>
-          <p className="font-display" style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.85rem", fontStyle: "italic" }}>
-            © 2026 Kfarhaoura Brotherhood. Building faith and community in Lebanon ✝
+        <footer
+          style={{
+            background: "var(--ink)",
+            borderTop: "2px solid var(--gold-dk)",
+            padding: "32px 24px",
+            textAlign: "center",
+          }}
+        >
+          <p
+            className="font-display"
+            style={{
+              color: "rgba(255,255,255,0.3)",
+              fontSize: "0.85rem",
+              fontStyle: "italic",
+            }}
+          >
+            © 2026 Kfarhaoura Brotherhood. Building faith and community in
+            Lebanon ✝
           </p>
         </footer>
       </div>
@@ -939,20 +1306,54 @@ export default function UsersPage() {
       {deleteConfirmStep.step === 1 && (
         <div className="modal-overlay">
           <div className="modal-box">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h2 className="font-display" style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--ink)" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 20,
+              }}
+            >
+              <h2
+                className="font-display"
+                style={{
+                  fontSize: "1.5rem",
+                  fontWeight: 700,
+                  color: "var(--ink)",
+                }}
+              >
                 Remove Member
               </h2>
-              <button onClick={() => setDeleteConfirmStep({ step: 0, userId: null })}
-                style={{ background: "none", border: "none", cursor: "pointer", color: "#aaa", padding: 4 }}>
+              <button
+                onClick={() => setDeleteConfirmStep({ step: 0, userId: null })}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "#aaa",
+                  padding: 4,
+                }}
+              >
                 <XMarkIcon style={{ width: 22, height: 22 }} />
               </button>
             </div>
-            <div style={{
-              background: "#FEF2F2", borderLeft: "3px solid #DC2626",
-              borderRadius: 12, padding: "16px 18px", marginBottom: 24,
-            }}>
-              <p style={{ fontWeight: 700, color: "#991B1B", fontSize: 14, marginBottom: 6 }}>
+            <div
+              style={{
+                background: "#FEF2F2",
+                borderLeft: "3px solid #DC2626",
+                borderRadius: 12,
+                padding: "16px 18px",
+                marginBottom: 24,
+              }}
+            >
+              <p
+                style={{
+                  fontWeight: 700,
+                  color: "#991B1B",
+                  fontSize: 14,
+                  marginBottom: 6,
+                }}
+              >
                 Are you sure you want to remove this member?
               </p>
               <p style={{ color: "#B91C1C", fontSize: 14 }}>
@@ -961,11 +1362,20 @@ export default function UsersPage() {
             </div>
             <div style={{ display: "flex", gap: 10 }}>
               <button
-                onClick={() => setDeleteConfirmStep({ ...deleteConfirmStep, step: 2 })}
+                onClick={() =>
+                  setDeleteConfirmStep({ ...deleteConfirmStep, step: 2 })
+                }
                 style={{
-                  flex: 1, background: "#DC2626", color: "white", border: "none",
-                  borderRadius: 12, padding: "12px", fontFamily: "'Lato', sans-serif",
-                  fontWeight: 700, fontSize: 14, cursor: "pointer",
+                  flex: 1,
+                  background: "#DC2626",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 12,
+                  padding: "12px",
+                  fontFamily: "'Lato', sans-serif",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  cursor: "pointer",
                 }}
               >
                 Continue
@@ -973,9 +1383,16 @@ export default function UsersPage() {
               <button
                 onClick={() => setDeleteConfirmStep({ step: 0, userId: null })}
                 style={{
-                  flex: 1, background: "var(--stone)", color: "var(--ink)", border: "1.5px solid #E8D5A3",
-                  borderRadius: 12, padding: "12px", fontFamily: "'Lato', sans-serif",
-                  fontWeight: 700, fontSize: 14, cursor: "pointer",
+                  flex: 1,
+                  background: "var(--stone)",
+                  color: "var(--ink)",
+                  border: "1.5px solid #E8D5A3",
+                  borderRadius: 12,
+                  padding: "12px",
+                  fontFamily: "'Lato', sans-serif",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  cursor: "pointer",
                 }}
               >
                 Cancel
@@ -989,20 +1406,54 @@ export default function UsersPage() {
       {deleteConfirmStep.step === 2 && (
         <div className="modal-overlay">
           <div className="modal-box">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h2 className="font-display" style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--ink)" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 20,
+              }}
+            >
+              <h2
+                className="font-display"
+                style={{
+                  fontSize: "1.5rem",
+                  fontWeight: 700,
+                  color: "var(--ink)",
+                }}
+              >
                 Final Confirmation
               </h2>
-              <button onClick={() => setDeleteConfirmStep({ step: 0, userId: null })}
-                style={{ background: "none", border: "none", cursor: "pointer", color: "#aaa", padding: 4 }}>
+              <button
+                onClick={() => setDeleteConfirmStep({ step: 0, userId: null })}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "#aaa",
+                  padding: 4,
+                }}
+              >
                 <XMarkIcon style={{ width: 22, height: 22 }} />
               </button>
             </div>
-            <div style={{
-              background: "#FEF2F2", borderLeft: "3px solid #DC2626",
-              borderRadius: 12, padding: "16px 18px", marginBottom: 24,
-            }}>
-              <p style={{ fontWeight: 700, color: "#991B1B", fontSize: 14, marginBottom: 6 }}>
+            <div
+              style={{
+                background: "#FEF2F2",
+                borderLeft: "3px solid #DC2626",
+                borderRadius: 12,
+                padding: "16px 18px",
+                marginBottom: 24,
+              }}
+            >
+              <p
+                style={{
+                  fontWeight: 700,
+                  color: "#991B1B",
+                  fontSize: 14,
+                  marginBottom: 6,
+                }}
+              >
                 ⚠️ This action cannot be undone!
               </p>
               <p style={{ color: "#B91C1C", fontSize: 14, marginBottom: 4 }}>
@@ -1014,11 +1465,21 @@ export default function UsersPage() {
             </div>
             <div style={{ display: "flex", gap: 10 }}>
               <button
-                onClick={() => { if (deleteConfirmStep.userId) handleDeleteUser(deleteConfirmStep.userId); }}
+                onClick={() => {
+                  if (deleteConfirmStep.userId)
+                    handleDeleteUser(deleteConfirmStep.userId);
+                }}
                 style={{
-                  flex: 1, background: "#DC2626", color: "white", border: "none",
-                  borderRadius: 12, padding: "12px", fontFamily: "'Lato', sans-serif",
-                  fontWeight: 700, fontSize: 14, cursor: "pointer",
+                  flex: 1,
+                  background: "#DC2626",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 12,
+                  padding: "12px",
+                  fontFamily: "'Lato', sans-serif",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  cursor: "pointer",
                 }}
               >
                 Delete Permanently
@@ -1026,9 +1487,16 @@ export default function UsersPage() {
               <button
                 onClick={() => setDeleteConfirmStep({ step: 0, userId: null })}
                 style={{
-                  flex: 1, background: "var(--stone)", color: "var(--ink)", border: "1.5px solid #E8D5A3",
-                  borderRadius: 12, padding: "12px", fontFamily: "'Lato', sans-serif",
-                  fontWeight: 700, fontSize: 14, cursor: "pointer",
+                  flex: 1,
+                  background: "var(--stone)",
+                  color: "var(--ink)",
+                  border: "1.5px solid #E8D5A3",
+                  borderRadius: 12,
+                  padding: "12px",
+                  fontFamily: "'Lato', sans-serif",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  cursor: "pointer",
                 }}
               >
                 Cancel
@@ -1055,9 +1523,14 @@ export default function UsersPage() {
       {selectedUserId && (
         <AddToSectionModal
           userId={selectedUserId}
-          userSections={users.find((u) => u.id === selectedUserId)?.sections || []}
+          userSections={
+            users.find((u) => u.id === selectedUserId)?.sections || []
+          }
           onClose={() => setSelectedUserId(null)}
-          onSuccess={() => { setSelectedUserId(null); refetch(); }}
+          onSuccess={() => {
+            setSelectedUserId(null);
+            refetch();
+          }}
         />
       )}
     </>
