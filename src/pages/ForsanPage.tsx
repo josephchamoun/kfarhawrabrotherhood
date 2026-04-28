@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   ChevronDown,
   ChevronUp,
@@ -17,6 +17,7 @@ import api from "../api/api";
 import type { User, Role, ForsanRole } from "../types";
 import Navbar from "../components/Navbar";
 import forsanLogo from "../assets/fersen.jpg";
+import { useForsan } from "../hooks/useForsan";
 
 const NORMAL_ROLE_ID = 10;
 
@@ -32,12 +33,11 @@ const ROLES: Role[] = [
 ];
 
 export default function ForsanPage() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(false);
   const [assigningUserId, setAssigningUserId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [expandedUsers, setExpandedUsers] = useState<Set<number>>(new Set());
   const [showRoleModal, setShowRoleModal] = useState<number | null>(null);
+
   const [confirmModal, setConfirmModal] = useState<{
     show: boolean;
     type: "assign" | "end" | "activate" | "inactivate" | null;
@@ -45,6 +45,7 @@ export default function ForsanPage() {
     roleId?: number;
     userName?: string;
   }>({ show: false, type: null, userId: null });
+
   const [deleteConfirmStep, setDeleteConfirmStep] = useState<{
     step: 0 | 1 | 2;
     userId: number | null;
@@ -55,26 +56,15 @@ export default function ForsanPage() {
 
   const forsan_SECTION_ID = 3;
 
+  const {
+    activeUsers: allActive,
+    inactiveUsers: allInactive,
+    loading,
+    refetch,
+  } = useForsan();
+
   const hasActiveNonNormalRole = (user: User) =>
     getActiveRoles(user).some((r) => r.role_id !== NORMAL_ROLE_ID);
-
-  const fetchUsers = async () => {
-    try {
-      setLoading(true);
-      const res = await api.get("/forsan-role", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-        },
-      });
-      setUsers(res.data.active_users.concat(res.data.inactive_users));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchUsers();
-  }, []);
 
   const roleName = (roleId?: number) => {
     const role = ROLES.find((r) => r.id === roleId);
@@ -99,16 +89,14 @@ export default function ForsanPage() {
   const getPastRoles = (user: User): ForsanRole[] =>
     user.forsan_roles?.filter((r) => r.end_date !== null) || [];
 
-  const isActiveUser = (user: User) => getActiveRoles(user).length > 0;
-
-  const filteredUsers = users.filter((u) =>
+  const activeUsers = allActive.filter((u) =>
+    u.name.toLowerCase().includes(search.toLowerCase()),
+  );
+  const inactiveUsers = allInactive.filter((u) =>
     u.name.toLowerCase().includes(search.toLowerCase()),
   );
 
-  const activeUsers = filteredUsers.filter(isActiveUser);
-  const inactiveUsers = filteredUsers.filter((u) => !isActiveUser(u));
-
-  const takenRoleIds = activeUsers
+  const takenRoleIds = allActive
     .flatMap((u) => getActiveRoles(u).map((r) => r.role_id))
     .filter((id) => id && id !== NORMAL_ROLE_ID);
 
@@ -126,7 +114,7 @@ export default function ForsanPage() {
           },
         },
       );
-      fetchUsers();
+      refetch();
     } finally {
       setAssigningUserId(null);
     }
@@ -148,7 +136,7 @@ export default function ForsanPage() {
           },
         },
       );
-      fetchUsers();
+      refetch();
     } finally {
       setAssigningUserId(null);
     }
@@ -170,7 +158,7 @@ export default function ForsanPage() {
           },
         },
       );
-      fetchUsers();
+      refetch();
     } finally {
       setAssigningUserId(null);
     }
@@ -189,7 +177,7 @@ export default function ForsanPage() {
           },
         },
       );
-      fetchUsers();
+      refetch();
     } finally {
       setAssigningUserId(null);
     }

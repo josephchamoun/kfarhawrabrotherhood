@@ -91,9 +91,7 @@ export default function EditEventDetailsModal({
     let payload: any = {};
 
     if (editMode === "description") {
-      payload = {
-        description: form.description,
-      };
+      payload = { description: form.description };
     } else if (editMode === "full") {
       payload = {
         title: form.title,
@@ -109,16 +107,21 @@ export default function EditEventDetailsModal({
       return;
     }
 
+    // ✅ Optimistic: close modal and update UI instantly
+    // Merge the form changes into the existing event object
+    const optimisticEvent: Event = { ...event!, ...payload };
+    onUpdated(optimisticEvent);
+    onClose();
+
     try {
-      const res = await api.put(`/events/${event.id}/details`, payload, {
+      await api.put(`/events/${event!.id}/details`, payload, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("access_token")}`,
         },
       });
-
-      onUpdated(res.data.event);
-      onClose();
+      // ✅ Silent background save — UI already updated
     } catch (err) {
+      // If it fails, refetch will reconcile on next sync
       setError("Failed to update event details");
     } finally {
       setLoading(false);

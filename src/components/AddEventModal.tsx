@@ -13,15 +13,15 @@ import {
   FaChevronUp,
 } from "react-icons/fa";
 import api from "../api/api";
-import type { Event } from "../types";
+import type { Event as AppEvent } from "../types";
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  onCreated: (event: Event) => void;
+  onCreated: (event: AppEvent) => void;
   isGlobalAdmin: boolean;
-  canPickAnySections?: boolean; // new
-  forcedSection?: number | null; // new
+  canPickAnySections?: boolean;
+  forcedSection?: number | null;
 }
 
 export default function AddEventModal({
@@ -29,8 +29,8 @@ export default function AddEventModal({
   onClose,
   onCreated,
   isGlobalAdmin,
-  canPickAnySections = false, // default to false
-  forcedSection = null, // default to null
+  canPickAnySections = false,
+  forcedSection = null,
 }: Props) {
   const now = new Date().toISOString().slice(0, 10);
 
@@ -50,7 +50,6 @@ export default function AddEventModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showOptional, setShowOptional] = useState(false);
 
-  // Reset form when modal opens
   useEffect(() => {
     if (open) {
       setForm({
@@ -68,6 +67,7 @@ export default function AddEventModal({
       setShowOptional(false);
     }
   }, [open, now]);
+
   const currentUser = JSON.parse(localStorage.getItem("user_info") || "{}");
 
   const isRestrictedPresident = () => {
@@ -79,6 +79,7 @@ export default function AddEventModal({
           (r.section_id === 2 || r.section_id === 3)),
     );
   };
+
   const isChabibaAminSer = () => {
     return currentUser.roles?.some(
       (r: any) => r.role_name === "Amin Ser" && r.section_id === 1,
@@ -131,7 +132,7 @@ export default function AddEventModal({
         },
       });
 
-      onCreated(res.data.event);
+      onCreated(res.data.event); // ✅ passes AppEvent back to EventsPage
       onClose();
     } catch (err: any) {
       alert(err.response?.data?.message || "Failed to create event");
@@ -151,7 +152,6 @@ export default function AddEventModal({
       >
         {/* Header */}
         <div className="relative bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-8 overflow-hidden">
-          {/* Background pattern */}
           <div className="absolute inset-0 opacity-10">
             <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
               <defs>
@@ -221,9 +221,8 @@ export default function AddEventModal({
               />
             </div>
 
-            {/* Type and Date - Row */}
+            {/* Type and Date */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {/* Type */}
               <div>
                 <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
                   <FaTag className="text-blue-600" />
@@ -240,7 +239,6 @@ export default function AddEventModal({
                 />
               </div>
 
-              {/* Date */}
               <div>
                 <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
                   <FaCalendarAlt className="text-blue-600" />
@@ -256,7 +254,7 @@ export default function AddEventModal({
               </div>
             </div>
 
-            {/* Global Admin Section Selector */}
+            {/* Section Selector */}
             {(isGlobalAdmin || isChabibaAminSer() || canPickAnySections) &&
               !forcedSection && (
                 <div>
@@ -394,6 +392,7 @@ export default function AddEventModal({
                         </div>
                       </div>
                     )}
+
                     {/* Notes */}
                     <div>
                       <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   ChevronDown,
   ChevronUp,
@@ -18,8 +18,10 @@ import api from "../api/api";
 import type { User, Role, ChabibaRole } from "../types";
 import Navbar from "../components/Navbar";
 import chabibaLogo from "../assets/chabibe.jpeg";
+import { useChabiba } from "../hooks/useChabiba";
 
 const NORMAL_ROLE_ID = 10;
+const CHABIBA_SECTION_ID = 1;
 
 const ROLES: Role[] = [
   { id: 2, name: "Chabiba President", nameAr: "رئيس الشبيبة" },
@@ -32,9 +34,19 @@ const ROLES: Role[] = [
   { id: 9, name: "Ne2b Al Ra2is", nameAr: "نائب الرئيس" },
 ];
 
+const getAuthHeader = () => ({
+  Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+});
+
 export default function ChabibaPage() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(false);
+  // ── Cached fetching via useChabiba (replaces local fetchUsers + useEffect) ──
+  const {
+    activeUsers: allActive,
+    inactiveUsers: allInactive,
+    loading,
+    refetch,
+  } = useChabiba();
+
   const [assigningUserId, setAssigningUserId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [expandedUsers, setExpandedUsers] = useState<Set<number>>(new Set());
@@ -54,42 +66,10 @@ export default function ChabibaPage() {
 
   const loggedInUser = JSON.parse(localStorage.getItem("user_info") || "null");
 
-  const CHABIBA_SECTION_ID = 1;
-
-  const hasActiveNonNormalRole = (user: User) =>
-    getActiveRoles(user).some((r) => r.role_id !== NORMAL_ROLE_ID);
-
-  const fetchUsers = async () => {
-    try {
-      setLoading(true);
-      const res = await api.get("/chabiba-role", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-        },
-      });
-      setUsers(res.data.active_users.concat(res.data.inactive_users));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const roleName = (roleId?: number) => {
-    const role = ROLES.find((r) => r.id === roleId);
-    return role
-      ? { name: role.name, nameAr: role.nameAr }
-      : { name: "Normal Member", nameAr: "عضو عادي" };
-  };
-  const isChabibaPresident = () => {
-    return (
-      loggedInUser?.roles?.some(
-        (r: any) => r.role_id === 2 && r.section_id === CHABIBA_SECTION_ID,
-      ) || loggedInUser?.is_global_admin
-    );
-  };
+  const isChabibaPresident = () =>
+    loggedInUser?.roles?.some(
+      (r: any) => r.role_id === 2 && r.section_id === CHABIBA_SECTION_ID,
+    ) || loggedInUser?.is_global_admin;
 
   const canManage = isChabibaPresident();
 
@@ -99,19 +79,39 @@ export default function ChabibaPage() {
   const getPastRoles = (user: User): ChabibaRole[] =>
     user.chabiba_roles?.filter((r) => r.end_date !== null) || [];
 
-  const isActiveUser = (user: User) => getActiveRoles(user).length > 0;
+  const hasActiveNonNormalRole = (user: User) =>
+    getActiveRoles(user).some((r) => r.role_id !== NORMAL_ROLE_ID);
 
-  const filteredUsers = users.filter((u) =>
+  const roleName = (roleId?: number) => {
+    const role = ROLES.find((r) => r.id === roleId);
+    return role
+      ? { name: role.name, nameAr: role.nameAr }
+      : { name: "Normal Member", nameAr: "عضو عادي" };
+  };
+
+  // Search filter applied on top of hook output
+  const activeUsers = allActive.filter((u) =>
+    u.name.toLowerCase().includes(search.toLowerCase()),
+  );
+  const inactiveUsers = allInactive.filter((u) =>
     u.name.toLowerCase().includes(search.toLowerCase()),
   );
 
-  const activeUsers = filteredUsers.filter(isActiveUser);
-  const inactiveUsers = filteredUsers.filter((u) => !isActiveUser(u));
-
-  const takenRoleIds = activeUsers
+  const takenRoleIds = allActive
     .flatMap((u) => getActiveRoles(u).map((r) => r.role_id))
     .filter((id) => id && id !== NORMAL_ROLE_ID);
 
+  const toggleExpanded = (userId: number) => {
+    const newExpanded = new Set(expandedUsers);
+    if (newExpanded.has(userId)) {
+      newExpanded.delete(userId);
+    } else {
+      newExpanded.add(userId);
+    }
+    setExpandedUsers(newExpanded);
+  };
+
+  // ── API actions (refetch() replaces fetchUsers()) ─────────────────────────
   const assignRole = async (userId: number, roleId: number) => {
     try {
       setAssigningUserId(userId);
@@ -120,13 +120,9 @@ export default function ChabibaPage() {
       await api.post(
         "/chabiba/assign-role",
         { user_id: userId, section_id: CHABIBA_SECTION_ID, role_id: roleId },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-          },
-        },
+        { headers: getAuthHeader() },
       );
-      fetchUsers();
+      refetch();
     } finally {
       setAssigningUserId(null);
     }
@@ -138,17 +134,10 @@ export default function ChabibaPage() {
       setDeleteConfirmStep({ step: 0, userId: null });
       await api.post(
         "/chabiba/end-role",
-        {
-          user_id: userId,
-          section_id: CHABIBA_SECTION_ID,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-          },
-        },
+        { user_id: userId, section_id: CHABIBA_SECTION_ID },
+        { headers: getAuthHeader() },
       );
-      fetchUsers();
+      refetch();
     } finally {
       setAssigningUserId(null);
     }
@@ -160,17 +149,10 @@ export default function ChabibaPage() {
       setConfirmModal({ show: false, type: null, userId: null });
       await api.post(
         "/chabiba/activate-user",
-        {
-          user_id: userId,
-          section_id: CHABIBA_SECTION_ID,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-          },
-        },
+        { user_id: userId, section_id: CHABIBA_SECTION_ID },
+        { headers: getAuthHeader() },
       );
-      fetchUsers();
+      refetch();
     } finally {
       setAssigningUserId(null);
     }
@@ -183,28 +165,15 @@ export default function ChabibaPage() {
       await api.post(
         "/chabiba/inactivate-user",
         { user_id: userId },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-          },
-        },
+        { headers: getAuthHeader() },
       );
-      fetchUsers();
+      refetch();
     } finally {
       setAssigningUserId(null);
     }
   };
 
-  const toggleExpanded = (userId: number) => {
-    const newExpanded = new Set(expandedUsers);
-    if (newExpanded.has(userId)) {
-      newExpanded.delete(userId);
-    } else {
-      newExpanded.add(userId);
-    }
-    setExpandedUsers(newExpanded);
-  };
-
+  // ── Render (identical to original) ───────────────────────────────────────
   const renderUser = (user: User, active: boolean) => {
     const activeRoles = getActiveRoles(user);
     const pastRoles = getPastRoles(user);
@@ -301,7 +270,7 @@ export default function ChabibaPage() {
                         key={r.id}
                         className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-600"
                       >
-                        <div className="w-2 h-2 rounded-full bg-gray-300 flex-shrink-0"></div>
+                        <div className="w-2 h-2 rounded-full bg-gray-300 flex-shrink-0" />
                         <span className="font-medium">{role.name}</span>
                         <span>•</span>
                         <span className="font-medium">{role.nameAr}</span>
@@ -343,8 +312,8 @@ export default function ChabibaPage() {
                             <div
                               className="fixed inset-0 z-10"
                               onClick={() => setShowRoleModal(null)}
-                            ></div>
-                            <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-2xl border-2 border-gray-100 z-20 max-h-96 overflow-y-auto">
+                            />
+                            <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-2xl border-2 border-gray-100 z-[999] max-h-96 overflow-y-auto">
                               <div className="p-3 border-b border-gray-100 bg-gradient-to-r from-yellow-50 to-amber-50">
                                 <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
                                   Select a Role
@@ -488,13 +457,12 @@ export default function ChabibaPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => {
-                  if (confirmModal.type === "assign" && confirmModal.roleId) {
+                  if (confirmModal.type === "assign" && confirmModal.roleId)
                     assignRole(confirmModal.userId!, confirmModal.roleId);
-                  } else if (confirmModal.type === "activate") {
+                  else if (confirmModal.type === "activate")
                     activateUser(confirmModal.userId!);
-                  } else if (confirmModal.type === "inactivate") {
+                  else if (confirmModal.type === "inactivate")
                     inactivateUser(confirmModal.userId!);
-                  }
                 }}
                 className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg transition-colors"
               >
@@ -584,9 +552,8 @@ export default function ChabibaPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => {
-                  if (deleteConfirmStep.userId) {
+                  if (deleteConfirmStep.userId)
                     endRole(deleteConfirmStep.userId);
-                  }
                 }}
                 className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors font-semibold"
               >
@@ -611,14 +578,12 @@ export default function ChabibaPage() {
               alt="Chabiba Logo"
               className="w-20 h-20 sm:w-28 sm:h-28 rounded-full mb-4 object-cover shadow-lg"
             />
-
             <h1 className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-yellow-600 to-amber-600 bg-clip-text text-transparent mb-2">
               Chabiba
             </h1>
             <p className="text-lg sm:text-xl text-gray-600 font-medium">
               الشبيبة
             </p>
-
             <div className="flex items-center justify-center gap-2 mt-3">
               <Heart className="w-4 h-4 text-red-500" />
               <p className="text-xs sm:text-sm text-gray-500">
@@ -642,7 +607,7 @@ export default function ChabibaPage() {
 
         <div className="mb-8 sm:mb-12">
           <div className="flex items-center gap-3 mb-4 sm:mb-6">
-            <div className="w-1 h-6 sm:h-8 bg-gradient-to-b from-yellow-500 to-amber-600 rounded-full"></div>
+            <div className="w-1 h-6 sm:h-8 bg-gradient-to-b from-yellow-500 to-amber-600 rounded-full" />
             <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
               Active Members
             </h2>
@@ -652,7 +617,7 @@ export default function ChabibaPage() {
           </div>
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : activeUsers.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-xl border-2 border-dashed border-gray-200">
@@ -669,7 +634,7 @@ export default function ChabibaPage() {
 
         <div>
           <div className="flex items-center gap-3 mb-4 sm:mb-6">
-            <div className="w-1 h-6 sm:h-8 bg-gradient-to-b from-gray-400 to-gray-500 rounded-full"></div>
+            <div className="w-1 h-6 sm:h-8 bg-gradient-to-b from-gray-400 to-gray-500 rounded-full" />
             <h2 className="text-xl sm:text-2xl font-bold text-gray-500">
               Inactive Members
             </h2>
@@ -679,7 +644,7 @@ export default function ChabibaPage() {
           </div>
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="w-12 h-12 border-4 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-12 h-12 border-4 border-gray-400 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : inactiveUsers.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-xl border-2 border-dashed border-gray-200">

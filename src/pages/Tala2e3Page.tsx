@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   ChevronDown,
   ChevronUp,
@@ -17,6 +17,7 @@ import api from "../api/api";
 import type { User, Role, Tala2e3Role } from "../types";
 import Navbar from "../components/Navbar";
 import tala2e3Logo from "../assets/talaih.png";
+import { useTala2e3 } from "../hooks/useTala2e3";
 
 const NORMAL_ROLE_ID = 10;
 
@@ -32,12 +33,11 @@ const ROLES: Role[] = [
 ];
 
 export default function Tala2e3Page() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(false);
   const [assigningUserId, setAssigningUserId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [expandedUsers, setExpandedUsers] = useState<Set<number>>(new Set());
   const [showRoleModal, setShowRoleModal] = useState<number | null>(null);
+
   const [confirmModal, setConfirmModal] = useState<{
     show: boolean;
     type: "assign" | "end" | "activate" | "inactivate" | null;
@@ -45,6 +45,7 @@ export default function Tala2e3Page() {
     roleId?: number;
     userName?: string;
   }>({ show: false, type: null, userId: null });
+
   const [deleteConfirmStep, setDeleteConfirmStep] = useState<{
     step: 0 | 1 | 2;
     userId: number | null;
@@ -55,26 +56,15 @@ export default function Tala2e3Page() {
 
   const TALA2E3_SECTION_ID = 2;
 
+  const {
+    activeUsers: allActive,
+    inactiveUsers: allInactive,
+    loading,
+    refetch,
+  } = useTala2e3();
+
   const hasActiveNonNormalRole = (user: User) =>
     getActiveRoles(user).some((r) => r.role_id !== NORMAL_ROLE_ID);
-
-  const fetchUsers = async () => {
-    try {
-      setLoading(true);
-      const res = await api.get("/tala2e3-role", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-        },
-      });
-      setUsers(res.data.active_users.concat(res.data.inactive_users));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchUsers();
-  }, []);
 
   const roleName = (roleId?: number) => {
     const role = ROLES.find((r) => r.id === roleId);
@@ -98,16 +88,14 @@ export default function Tala2e3Page() {
   const getPastRoles = (user: User): Tala2e3Role[] =>
     user.tala2e3_roles?.filter((r) => r.end_date !== null) || [];
 
-  const isActiveUser = (user: User) => getActiveRoles(user).length > 0;
-
-  const filteredUsers = users.filter((u) =>
+  const activeUsers = allActive.filter((u) =>
+    u.name.toLowerCase().includes(search.toLowerCase()),
+  );
+  const inactiveUsers = allInactive.filter((u) =>
     u.name.toLowerCase().includes(search.toLowerCase()),
   );
 
-  const activeUsers = filteredUsers.filter(isActiveUser);
-  const inactiveUsers = filteredUsers.filter((u) => !isActiveUser(u));
-
-  const takenRoleIds = activeUsers
+  const takenRoleIds = allActive
     .flatMap((u) => getActiveRoles(u).map((r) => r.role_id))
     .filter((id) => id && id !== NORMAL_ROLE_ID);
 
@@ -125,7 +113,7 @@ export default function Tala2e3Page() {
           },
         },
       );
-      fetchUsers();
+      refetch();
     } finally {
       setAssigningUserId(null);
     }
@@ -147,7 +135,7 @@ export default function Tala2e3Page() {
           },
         },
       );
-      fetchUsers();
+      refetch();
     } finally {
       setAssigningUserId(null);
     }
@@ -169,7 +157,7 @@ export default function Tala2e3Page() {
           },
         },
       );
-      fetchUsers();
+      refetch();
     } finally {
       setAssigningUserId(null);
     }
@@ -188,7 +176,7 @@ export default function Tala2e3Page() {
           },
         },
       );
-      fetchUsers();
+      refetch();
     } finally {
       setAssigningUserId(null);
     }
