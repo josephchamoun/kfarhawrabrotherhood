@@ -15,7 +15,7 @@ export interface Section {
   description?: string;
   created_at?: string | null;
   updated_at?: string | null;
-  pivot?: Pivot; // for many-to-many relation
+  pivot?: Pivot;
 }
 
 export interface Role {
@@ -31,20 +31,19 @@ export interface UserForm {
   password: string;
 }
 
-
 export interface User {
   id: number;
   name: string;
   email: string;
   password: string;
   phone?: string | null;
-  is_global_admin: boolean;  
-  is_super_admin: boolean;      
+  is_global_admin: boolean;
+  is_super_admin: boolean;
   created_by?: number | null;
   created_at?: string;
   updated_at?: string;
-  sections?: Section[];          
-  role?: Role;                  
+  sections?: Section[];
+  role?: Role;
   creator?: User | null;
   chabiba_roles: ChabibaRole[];
   tala2e3_roles: Tala2e3Role[];
@@ -53,22 +52,20 @@ export interface User {
   date_of_birth?: Date;
 }
 
-
-
 export interface Shop {
   id: number;
   name: string;
   phone_number: string;
   place: string;
   description: string;
-};
+}
+
 export interface Contact {
-  id:number;
+  id: number;
   name: string;
   phone: string;
   town_name: string;
- 
-};
+}
 
 export type Creator = {
   id: number;
@@ -91,19 +88,20 @@ export type Event = {
   sections: Section[];
 };
 
-
 export interface ChabibaRole {
   id: number;
   role_id: number;
   start_date: string;
   end_date: string | null;
 }
+
 export interface Tala2e3Role {
   id: number;
   role_id: number;
   start_date: string;
   end_date: string | null;
 }
+
 export interface ForsanRole {
   id: number;
   role_id: number;
@@ -129,34 +127,46 @@ export interface DriveAccount {
   id: number;
   email: string;
   title: string;
-  password?: string; // only present when fetching single account
+  password?: string;
   created_at: string;
   updated_at: string;
 }
 
 export interface Moneybox {
-id: number;
-section_id: number;
-section_name: string;
-amount: number;
+  id: number;
+  section_id: number;
+  section_name: string;
+  amount: number;
 }
 
+export interface MoneyTransaction {
+  id: number;
+  moneybox_id: number;
+  amount: number;
+  type: 'income' | 'expense';
+  source?: string | null;
+  description?: string | null;
+  event_id?: number | null;
+  user_id?: number | null;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface UserInfo {
-id: number;
-is_global_admin: boolean;
-is_super_admin: boolean;
-roles: UserRole[];
+  id: number;
+  is_global_admin: boolean;
+  is_super_admin: boolean;
+  roles: UserRole[];
 }
 
 export interface Election {
-id: number;
-section_id: number;
-section_name: string; // Loaded from backend with relation
-title: string;
-description?: string;
-election_date: string;
-created_by: number;
-created_at: string;
-updated_at: string;
+  id: number;
+  section_id: number;
+  section_name: string;
+  title: string;
+  description?: string;
+  election_date: string;
+  created_by: number;
+  created_at: string;
+  updated_at: string;
 }

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Navbar from "../components/Navbar";
 import AddEventModal from "../components/AddEventModal";
 import EditEventDetailsModal from "../components/EditEventDetailsModal";
@@ -16,6 +16,8 @@ import {
   CalendarIcon,
   BanknotesIcon,
   CurrencyDollarIcon,
+  ArrowDownTrayIcon,
+  ChevronDownIcon,
 } from "@heroicons/react/24/solid";
 
 import type { Event as AppEvent, UserRole } from "../types";
@@ -99,6 +101,8 @@ export default function EventsPage() {
   const [expanded, setExpanded] = useState(false);
   const [yearFilter, setYearFilter] = useState<string>("all");
   const [showFilters, setShowFilters] = useState(false);
+  const [showDownloadMenu, setShowDownloadMenu] = useState(false);
+  const downloadMenuRef = useRef<HTMLDivElement>(null);
 
   const LOCK_AFTER_DAYS = 30;
   const WARNING_DAYS = 30;
@@ -263,6 +267,249 @@ export default function EventsPage() {
   const calculateProfit = (event: AppEvent) =>
     parseFloat(event.total_revenue) - parseFloat(event.total_spent);
 
+  // ── Download as PDF (via browser print dialog) ──────────────────────────
+  const handleDownloadPDF = () => {
+    setShowDownloadMenu(false);
+
+    const totalRevenue = filteredEvents.reduce(
+      (s, e) => s + parseFloat(e.total_revenue),
+      0,
+    );
+    const totalSpent = filteredEvents.reduce(
+      (s, e) => s + parseFloat(e.total_spent),
+      0,
+    );
+    const totalProfit = totalRevenue - totalSpent;
+
+    const exportDate = new Date().toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    const sectionLabel =
+      sectionFilter === "all"
+        ? "All Sections"
+        : sectionFilter === "1"
+          ? "Chabiba"
+          : sectionFilter === "2"
+            ? "Tala2e3"
+            : "Forsan";
+
+    const eventsHTML = filteredEvents
+      .map((event) => {
+        const profit = calculateProfit(event);
+        const isProfitable = profit >= 0;
+        const upcoming = isUpcomingEvent(event.event_date);
+        const locked = isEventLocked(event);
+        const sections = event.sections.map((s: any) => s.name).join(", ");
+
+        return `
+        <div class="event-card">
+          <div class="event-header">
+            <div class="event-title-row">
+              <h2 class="event-title">${event.title}</h2>
+              <div class="badges">
+                <span class="badge ${upcoming ? "badge-upcoming" : "badge-done"}">${upcoming ? "Upcoming" : "Done"}</span>
+                ${locked ? '<span class="badge badge-locked">Locked</span>' : ""}
+              </div>
+            </div>
+            <div class="event-meta">
+              <span>📅 ${new Date(event.event_date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</span>
+              <span>🏷 ${sections}</span>
+            </div>
+          </div>
+
+          <p class="event-description">${event.description || "—"}</p>
+
+          <div class="financials">
+            <div class="fin-item">
+              <span class="fin-label">Revenue</span>
+              <span class="fin-value revenue">$${parseFloat(event.total_revenue).toFixed(2)}</span>
+            </div>
+            <div class="fin-divider"></div>
+            <div class="fin-item">
+              <span class="fin-label">Spent</span>
+              <span class="fin-value spent">$${parseFloat(event.total_spent).toFixed(2)}</span>
+            </div>
+            <div class="fin-divider"></div>
+            <div class="fin-item">
+              <span class="fin-label">Net Profit</span>
+              <span class="fin-value ${isProfitable ? "profit" : "loss"}">$${profit.toFixed(2)}</span>
+            </div>
+          </div>
+
+          ${
+            event.notes
+              ? `<div class="notes"><strong>Notes:</strong> ${event.notes}</div>`
+              : ""
+          }
+          ${
+            event.drive_link || event.photo_link
+              ? `<div class="links">
+              ${event.drive_link ? `<a href="${event.drive_link}">Drive ↗</a>` : ""}
+              ${event.photo_link ? `<a href="${event.photo_link}">Photos ↗</a>` : ""}
+            </div>`
+              : ""
+          }
+        </div>
+      `;
+      })
+      .join("");
+
+    const html = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <title>Events Export — ${exportDate}</title>
+        <style>
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; color: #111; background: white; padding: 32px; }
+
+          .report-header { margin-bottom: 28px; border-bottom: 2px solid #111; padding-bottom: 16px; }
+          .report-header h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
+          .report-header p { color: #666; font-size: 12px; margin-top: 4px; }
+
+          .summary { display: flex; gap: 16px; margin-bottom: 28px; }
+          .summary-item { flex: 1; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 16px; }
+          .summary-item .s-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 4px; }
+          .summary-item .s-value { font-size: 20px; font-weight: 800; }
+          .s-revenue { color: #059669; }
+          .s-spent { color: #e11d48; }
+          .s-profit { color: #2563eb; }
+          .s-loss { color: #ea580c; }
+
+          .event-card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 14px; page-break-inside: avoid; }
+          .event-header { margin-bottom: 10px; }
+          .event-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+          .event-title { font-size: 15px; font-weight: 700; color: #111; }
+          .badges { display: flex; gap: 4px; flex-shrink: 0; }
+          .badge { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 7px; border-radius: 999px; }
+          .badge-upcoming { background: #d1fae5; color: #065f46; }
+          .badge-done { background: #f3f4f6; color: #6b7280; }
+          .badge-locked { background: #1f2937; color: white; }
+          .event-meta { display: flex; gap: 14px; font-size: 11px; color: #6b7280; }
+          .event-description { font-size: 12px; color: #374151; line-height: 1.6; margin-bottom: 12px; }
+
+          .financials { display: flex; gap: 0; border: 1px solid #f3f4f6; border-radius: 8px; overflow: hidden; margin-bottom: 10px; background: #f9fafb; }
+          .fin-item { flex: 1; padding: 8px 12px; text-align: center; }
+          .fin-divider { width: 1px; background: #e5e7eb; }
+          .fin-label { display: block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #9ca3af; margin-bottom: 3px; }
+          .fin-value { font-size: 14px; font-weight: 700; }
+          .revenue { color: #059669; }
+          .spent { color: #e11d48; }
+          .profit { color: #2563eb; }
+          .loss { color: #ea580c; }
+
+          .notes { font-size: 11px; color: #6b7280; background: #f9fafb; border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; line-height: 1.5; }
+          .links { font-size: 11px; }
+          .links a { color: #2563eb; text-decoration: none; margin-right: 12px; }
+
+          .footer { margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 12px; font-size: 11px; color: #9ca3af; display: flex; justify-content: space-between; }
+
+          @media print {
+            body { padding: 16px; }
+            .event-card { page-break-inside: avoid; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="report-header">
+          <h1>Events Report</h1>
+          <p>Exported on ${exportDate} · ${sectionLabel} · ${filteredEvents.length} event${filteredEvents.length !== 1 ? "s" : ""}${yearFilter !== "all" ? ` · ${yearFilter}` : ""}${dateFilter !== "all" ? ` · ${dateFilter === "upcoming" ? "Upcoming" : "Done"}` : ""}</p>
+        </div>
+
+        <div class="summary">
+          <div class="summary-item">
+            <div class="s-label">Total Revenue</div>
+            <div class="s-value s-revenue">$${totalRevenue.toFixed(2)}</div>
+          </div>
+          <div class="summary-item">
+            <div class="s-label">Total Spent</div>
+            <div class="s-value s-spent">$${totalSpent.toFixed(2)}</div>
+          </div>
+          <div class="summary-item">
+            <div class="s-label">Net Profit</div>
+            <div class="s-value ${totalProfit >= 0 ? "s-profit" : "s-loss"}">$${totalProfit.toFixed(2)}</div>
+          </div>
+        </div>
+
+        ${eventsHTML}
+
+        <div class="footer">
+          <span>Brotherhood Events System</span>
+          <span>${filteredEvents.length} events · Generated ${exportDate}</span>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      alert("Please allow pop-ups to export PDF.");
+      return;
+    }
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
+  };
+
+  // ── Download as CSV ──────────────────────────────────────────────────────
+  const handleDownloadCSV = () => {
+    setShowDownloadMenu(false);
+
+    const headers = [
+      "Title",
+      "Date",
+      "Status",
+      "Sections",
+      "Revenue",
+      "Spent",
+      "Profit",
+      "Description",
+      "Notes",
+      "Drive Link",
+      "Photo Link",
+    ];
+
+    const rows = filteredEvents.map((event) => {
+      const profit = calculateProfit(event);
+      const upcoming = isUpcomingEvent(event.event_date);
+      const sections = event.sections.map((s: any) => s.name).join(" / ");
+      const escape = (val: string | null | undefined) => {
+        if (!val) return "";
+        const str = String(val).replace(/"/g, '""');
+        return `"${str}"`;
+      };
+      return [
+        escape(event.title),
+        new Date(event.event_date).toLocaleDateString("en-US"),
+        upcoming ? "Upcoming" : "Done",
+        escape(sections),
+        parseFloat(event.total_revenue).toFixed(2),
+        parseFloat(event.total_spent).toFixed(2),
+        profit.toFixed(2),
+        escape(event.description),
+        escape(event.notes),
+        escape(event.drive_link),
+        escape(event.photo_link),
+      ].join(",");
+    });
+
+    const csvContent = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `events_export_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const availableYears = Array.from(
     new Set(events.map((e) => new Date(e.event_date).getFullYear().toString())),
   ).sort((a, b) => parseInt(b) - parseInt(a));
@@ -344,15 +591,67 @@ export default function EventsPage() {
             </p>
           </div>
 
-          {canShowAddButton && (
-            <button
-              onClick={() => setIsAddOpen(true)}
-              className="inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors shadow-sm"
-            >
-              <PlusIcon className="w-4 h-4" />
-              Add Event
-            </button>
-          )}
+          {/* ── Header actions ── */}
+          <div className="flex items-center gap-2">
+            {/* Download dropdown */}
+            <div className="relative" ref={downloadMenuRef}>
+              <button
+                onClick={() => setShowDownloadMenu((v) => !v)}
+                className="inline-flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm border border-gray-200"
+              >
+                <ArrowDownTrayIcon className="w-4 h-4" />
+                Export
+                <ChevronDownIcon className="w-3.5 h-3.5 text-gray-400" />
+              </button>
+
+              {showDownloadMenu && (
+                <>
+                  {/* Backdrop to close on outside click */}
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setShowDownloadMenu(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-lg z-20 overflow-hidden">
+                    <button
+                      onClick={handleDownloadPDF}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
+                    >
+                      <span className="text-base">📄</span>
+                      <div>
+                        <p className="font-semibold">Save as PDF</p>
+                        <p className="text-xs text-gray-400">
+                          Opens print dialog
+                        </p>
+                      </div>
+                    </button>
+                    <div className="h-px bg-gray-100" />
+                    <button
+                      onClick={handleDownloadCSV}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
+                    >
+                      <span className="text-base">📊</span>
+                      <div>
+                        <p className="font-semibold">Save as CSV</p>
+                        <p className="text-xs text-gray-400">
+                          Opens in Excel / Sheets
+                        </p>
+                      </div>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {canShowAddButton && (
+              <button
+                onClick={() => setIsAddOpen(true)}
+                className="inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors shadow-sm"
+              >
+                <PlusIcon className="w-4 h-4" />
+                Add Event
+              </button>
+            )}
+          </div>
         </div>
 
         {/* ── Stats row ── */}
@@ -570,29 +869,35 @@ export default function EventsPage() {
                 return (
                   <div
                     key={event.id}
-                    className="bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col"
+                    className="bg-white border border-gray-200 rounded-2xl overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex flex-col group"
                   >
-                    {/* Card header */}
-                    <div className="p-5 border-b border-gray-100">
-                      {/* Top row: badges + actions */}
-                      <div className="flex items-start justify-between gap-3 mb-3">
+                    {/* ── Top accent bar: color indicates upcoming vs done ── */}
+                    <div
+                      className={`h-1 w-full ${upcoming ? "bg-emerald-400" : "bg-gray-200"}`}
+                    />
+
+                    {/* ── Card body ── */}
+                    <div className="p-5 flex flex-col flex-1">
+                      {/* Row 1: status badges + action buttons */}
+                      <div className="flex items-center justify-between gap-2 mb-4">
                         <div className="flex flex-wrap gap-1.5">
                           {upcoming ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                               Upcoming
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full">
                               Done
                             </span>
                           )}
                           {locked && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide bg-gray-800 text-white px-2 py-0.5 rounded-full">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest bg-gray-800 text-white px-2.5 py-1 rounded-full">
                               🔒 Locked
                             </span>
                           )}
                           {!locked && warning && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full">
                               ⏳ {getDaysRemainingBeforeLock(event.event_date)}d
                               left
                             </span>
@@ -607,7 +912,7 @@ export default function EventsPage() {
                                 setSelectedEvent(event);
                                 setIsEditOpen(true);
                               }}
-                              className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
+                              className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-800 transition-colors"
                               title="Edit Details"
                             >
                               <PencilIcon className="w-3.5 h-3.5" />
@@ -619,7 +924,7 @@ export default function EventsPage() {
                                 setSelectedEvent(event);
                                 setIsFinancialsOpen(true);
                               }}
-                              className="w-7 h-7 flex items-center justify-center rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-600 transition-colors"
+                              className="w-7 h-7 flex items-center justify-center rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-500 hover:text-amber-700 transition-colors"
                               title="Edit Financials"
                             >
                               <CurrencyDollarIcon className="w-3.5 h-3.5" />
@@ -628,7 +933,7 @@ export default function EventsPage() {
                           {canDeleteWithDate(event) && (
                             <button
                               onClick={() => handleDeleteEvent(event.id)}
-                              className="w-7 h-7 flex items-center justify-center rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-500 transition-colors"
+                              className="w-7 h-7 flex items-center justify-center rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-400 hover:text-rose-600 transition-colors"
                               title="Delete Event"
                             >
                               <TrashIcon className="w-3.5 h-3.5" />
@@ -637,73 +942,28 @@ export default function EventsPage() {
                         </div>
                       </div>
 
-                      {/* Title */}
-                      <h2 className="text-base font-bold text-gray-900 leading-snug mb-1">
+                      {/* Row 2: title + date */}
+                      <h2 className="text-[15px] font-extrabold text-gray-900 leading-snug mb-1.5 tracking-tight">
                         {event.title}
                       </h2>
-
-                      {/* Date */}
                       <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-3">
-                        <CalendarIcon className="w-3.5 h-3.5" />
-                        {new Date(event.event_date).toLocaleDateString(
-                          "en-US",
-                          { month: "short", day: "numeric", year: "numeric" },
-                        )}
+                        <CalendarIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>
+                          {new Date(event.event_date).toLocaleDateString(
+                            "en-US",
+                            {
+                              month: "long",
+                              day: "numeric",
+                              year: "numeric",
+                            },
+                          )}
+                        </span>
                       </div>
 
-                      {/* Description — bigger, more breathing room */}
-                      <div className="text-sm text-gray-600 leading-relaxed">
-                        <p className={expanded ? "" : "line-clamp-4"}>
-                          {event.description}
-                        </p>
-                        {event.description?.length > 180 && (
-                          <button
-                            onClick={() => setExpanded(!expanded)}
-                            className="text-xs text-gray-400 hover:text-gray-600 mt-1 font-medium transition-colors"
-                          >
-                            {expanded ? "Show less" : "Read more"}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Financials — compact row */}
-                    <div className="px-5 py-3 flex items-center gap-3 bg-gray-50 border-b border-gray-100">
-                      <div className="flex-1 text-center">
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-0.5">
-                          Revenue
-                        </p>
-                        <p className="text-sm font-bold text-emerald-600">
-                          ${parseFloat(event.total_revenue).toFixed(2)}
-                        </p>
-                      </div>
-                      <div className="w-px h-8 bg-gray-200" />
-                      <div className="flex-1 text-center">
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-0.5">
-                          Spent
-                        </p>
-                        <p className="text-sm font-bold text-rose-500">
-                          ${parseFloat(event.total_spent).toFixed(2)}
-                        </p>
-                      </div>
-                      <div className="w-px h-8 bg-gray-200" />
-                      <div className="flex-1 text-center">
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-0.5">
-                          Profit
-                        </p>
-                        <p
-                          className={`text-sm font-bold ${isProfitable ? "text-blue-600" : "text-orange-500"}`}
-                        >
-                          ${profit.toFixed(2)}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Footer: sections + links */}
-                    <div className="px-5 py-3 flex items-center justify-between gap-2 flex-wrap">
-                      <div className="flex flex-wrap gap-1.5">
+                      {/* Row 3: section pills */}
+                      <div className="flex flex-wrap gap-1.5 mb-4">
                         {isSharedEvent(event) && (
-                          <span className="text-[10px] font-bold uppercase tracking-wide bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                          <span className="text-[10px] font-bold uppercase tracking-widest bg-purple-100 text-purple-700 px-2.5 py-1 rounded-full">
                             Shared
                           </span>
                         )}
@@ -716,7 +976,7 @@ export default function EventsPage() {
                           return (
                             <span
                               key={section.id}
-                              className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide ${c.bg} ${c.text} px-2 py-0.5 rounded-full`}
+                              className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest ${c.bg} ${c.text} px-2.5 py-1 rounded-full`}
                             >
                               <span
                                 className={`w-1.5 h-1.5 rounded-full ${c.dot}`}
@@ -727,41 +987,148 @@ export default function EventsPage() {
                         })}
                       </div>
 
-                      <div className="flex gap-3">
-                        {event.drive_link && (
-                          <a
-                            href={event.drive_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-gray-400 hover:text-gray-700 transition-colors font-medium"
+                      {/* Row 4: description */}
+                      <div className="text-sm text-gray-600 leading-relaxed mb-4 flex-1">
+                        <p className={expanded ? "" : "line-clamp-3"}>
+                          {event.description}
+                        </p>
+                        {event.description?.length > 180 && (
+                          <button
+                            onClick={() => setExpanded(!expanded)}
+                            className="text-xs text-blue-500 hover:text-blue-700 mt-1 font-semibold transition-colors"
                           >
-                            Drive ↗
-                          </a>
-                        )}
-                        {event.photo_link && (
-                          <a
-                            href={event.photo_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-gray-400 hover:text-gray-700 transition-colors font-medium"
-                          >
-                            Photos ↗
-                          </a>
+                            {expanded ? "Show less" : "Read more"}
+                          </button>
                         )}
                       </div>
-                    </div>
 
-                    {/* Notes */}
-                    {event.notes && (
-                      <details className="px-5 pb-4">
-                        <summary className="cursor-pointer text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors select-none">
-                          Notes ▾
-                        </summary>
-                        <p className="mt-2 text-xs text-gray-500 leading-relaxed bg-gray-50 rounded-lg p-3">
-                          {event.notes}
-                        </p>
-                      </details>
-                    )}
+                      {/* Row 5: financials strip */}
+                      <div className="grid grid-cols-3 divide-x divide-gray-100 bg-gray-50 border border-gray-100 rounded-xl mb-4 overflow-hidden">
+                        <div className="py-2.5 px-3 text-center">
+                          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">
+                            Revenue
+                          </p>
+                          <p className="text-sm font-extrabold text-emerald-600">
+                            ${parseFloat(event.total_revenue).toFixed(2)}
+                          </p>
+                        </div>
+                        <div className="py-2.5 px-3 text-center">
+                          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">
+                            Spent
+                          </p>
+                          <p className="text-sm font-extrabold text-rose-500">
+                            ${parseFloat(event.total_spent).toFixed(2)}
+                          </p>
+                        </div>
+                        <div className="py-2.5 px-3 text-center">
+                          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">
+                            Profit
+                          </p>
+                          <p
+                            className={`text-sm font-extrabold ${isProfitable ? "text-blue-600" : "text-orange-500"}`}
+                          >
+                            ${profit.toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Row 6: link buttons */}
+                      {(event.drive_link || event.photo_link) && (
+                        <div className="flex gap-2 mb-4">
+                          {event.drive_link && (
+                            <a
+                              href={event.drive_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 hover:border-gray-300 px-3 py-1.5 rounded-lg transition-colors"
+                            >
+                              <svg
+                                className="w-3.5 h-3.5 text-gray-500"
+                                viewBox="0 0 24 24"
+                                fill="currentColor"
+                              >
+                                <path d="M6.5 20Q4.22 20 2.61 18.43 1 16.85 1 14.58q0-1.95 1.17-3.48 1.18-1.53 3.08-1.95.51-2.18 2.2-3.67Q9.14 4 11.5 4q2.72 0 4.61 1.88Q18 7.75 18 10.5v.5q1.73-.02 2.87 1.06Q22 13.12 22 14.85q0 1.64-1.18 2.74-1.17 1.11-2.82 1.11H13q-.82 0-1.41-.59-.59-.58-.59-1.41v-4.77l-1.5 1.5-1.41-1.41L12 8.33l3.91 3.91-1.41 1.41L13 12.18v4.82h5q.83 0 1.42-.59.58-.58.58-1.41 0-.83-.58-1.42Q18.83 13 18 13h-1.5v-2.5q0-1.88-1.31-3.19Q13.88 6 12 6q-1.88 0-3.19 1.31Q7.5 8.62 7.5 10.5H7q-1.25 0-2.12.88Q4 12.25 4 13.5q0 1.25.88 2.12Q5.75 16.5 7 16.5h1.5V18H7q-1.25 0-2.12-.88Q4 16.25 4 15H3.5" />
+                              </svg>
+                              Drive
+                              <svg
+                                className="w-2.5 h-2.5 text-gray-400"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2.5}
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
+                                />
+                              </svg>
+                            </a>
+                          )}
+                          {event.photo_link && (
+                            <a
+                              href={event.photo_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 hover:border-gray-300 px-3 py-1.5 rounded-lg transition-colors"
+                            >
+                              <svg
+                                className="w-3.5 h-3.5 text-gray-500"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={1.8}
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"
+                                />
+                              </svg>
+                              Photos
+                              <svg
+                                className="w-2.5 h-2.5 text-gray-400"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2.5}
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
+                                />
+                              </svg>
+                            </a>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Row 7: notes */}
+                      {event.notes && (
+                        <details className="group/notes">
+                          <summary className="cursor-pointer list-none flex items-center gap-1.5 text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors select-none">
+                            <svg
+                              className="w-3.5 h-3.5 transition-transform group-open/notes:rotate-90"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                              strokeWidth={2.5}
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M8.25 4.5l7.5 7.5-7.5 7.5"
+                              />
+                            </svg>
+                            Notes
+                          </summary>
+                          <p className="mt-2 text-xs text-gray-500 leading-relaxed bg-gray-50 border border-gray-100 rounded-lg p-3">
+                            {event.notes}
+                          </p>
+                        </details>
+                      )}
+                    </div>
                   </div>
                 );
               })

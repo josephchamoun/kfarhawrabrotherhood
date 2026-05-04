@@ -1,211 +1,536 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Navbar from "../components/Navbar";
-import api from "../api/api";
 import EditMoneyboxModal from "../components/EditMoneyboxModal";
-import type { Moneybox, UserInfo } from "../types";
+import TransactionModal from "../components/TransactionModal";
+import { useMoneyboxes } from "../hooks/useMoneyboxes";
+import api from "../api/api";
+import type { Moneybox, MoneyTransaction, UserInfo } from "../types";
 
-export default function MoneyPage() {
-  const user: UserInfo = JSON.parse(localStorage.getItem("user_info") || "{}");
+// ─── Section config ───────────────────────────────────────────────────────────
+const SECTION_CONFIG: Record<
+  number,
+  {
+    name: string;
+    accent: string;
+    soft: string;
+    border: string;
+    text: string;
+    badge: string;
+  }
+> = {
+  1: {
+    name: "Chabiba",
+    accent: "from-amber-400 to-yellow-500",
+    soft: "bg-amber-50",
+    border: "border-amber-200",
+    text: "text-amber-700",
+    badge: "bg-amber-100 text-amber-800",
+  },
+  2: {
+    name: "Tala2e3",
+    accent: "from-rose-400 to-red-500",
+    soft: "bg-rose-50",
+    border: "border-rose-200",
+    text: "text-rose-700",
+    badge: "bg-rose-100 text-rose-800",
+  },
+  3: {
+    name: "Forsan",
+    accent: "from-blue-400 to-indigo-500",
+    soft: "bg-blue-50",
+    border: "border-blue-200",
+    text: "text-blue-700",
+    badge: "bg-blue-100 text-blue-800",
+  },
+};
 
-  const [moneyboxes, setMoneyboxes] = useState<Moneybox[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedBox, setSelectedBox] = useState<Moneybox | null>(null);
+// ─── Permissions ──────────────────────────────────────────────────────────────
+function usePermissions(user: UserInfo) {
+  const isHighAdmin = user?.is_global_admin || user?.is_super_admin;
 
-  /* ---------------- PERMISSIONS ---------------- */
-  const canEditMoneybox = (box: Moneybox) => {
-    if (user?.is_global_admin || user?.is_super_admin) return true;
+  // Amin Sandou2 of section 1 = can do everything (edit moneybox + transactions for ALL sections)
+  const isAminSandou2Section1 =
+    !isHighAdmin &&
+    user?.roles?.some(
+      (r) => r.section_id === 1 && r.role_name === "Amin Sandou2",
+    );
 
-    const sectionRolesMap: Record<number, string[]> = {
-      1: ["Chabiba President", "Ne2b al Ra2is", "Amin Sandou2"],
-      2: ["Talaee President", "Ne2b al Ra2is", "Amin Sandou2"],
-      3: ["Forsan President", "Ne2b al Ra2is", "Amin Sandou2"],
-    };
-
-    return user.roles?.some(
-      (r) =>
-        r.section_id === box.section_id &&
-        sectionRolesMap[box.section_id]?.includes(r.role_name),
+  const canEditMoneybox = (box: Moneybox): boolean => {
+    if (isHighAdmin || isAminSandou2Section1) return true;
+    return !!user?.roles?.some(
+      (r) => r.section_id === box.section_id && r.role_name === "Amin Sandou2",
     );
   };
 
-  /* ---------------- SECTION NAME & THEMES ---------------- */
-  const sectionNames: Record<number, string> = {
-    1: "Chabiba",
-    2: "Talaee",
-    3: "Forsan",
-  };
+  // Only admins and Amin Sandou2 of section 1 can manage transactions
+  const canManageTransactions = isHighAdmin || !!isAminSandou2Section1;
 
-  const sectionThemes: Record<number, string> = {
-    1: "from-yellow-500 to-amber-500",
-    2: "from-red-600 to-rose-600",
-    3: "from-blue-600 to-indigo-600",
-  };
+  return { isHighAdmin, canEditMoneybox, canManageTransactions };
+}
 
-  /* ---------------- FETCH ---------------- */
-  useEffect(() => {
-    const fetchMoneyboxes = async () => {
-      try {
-        const res = await api.get("/moneyboxes", {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-          },
-        });
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function formatAmount(n: number): string {
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(n);
+}
 
-        setMoneyboxes(res.data);
-      } catch {
-        setMoneyboxes([]);
-      } finally {
-        setLoading(false);
-      }
-    };
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
 
-    fetchMoneyboxes();
-  }, []);
+// ─── Transaction Row ──────────────────────────────────────────────────────────
+function TransactionRow({
+  txn,
+  canManage,
+  onEdit,
+  onDelete,
+}: {
+  txn: MoneyTransaction;
+  canManage: boolean;
+  onEdit: (t: MoneyTransaction) => void;
+  onDelete: (id: number) => void;
+}) {
+  const isIncome = txn.type === "income";
+  return (
+    <div className="flex items-center gap-3 py-3 border-b border-gray-100 last:border-0 group">
+      {/* Icon */}
+      <div
+        className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${
+          isIncome ? "bg-emerald-100" : "bg-red-100"
+        }`}
+      >
+        <svg
+          className={`w-4 h-4 ${isIncome ? "text-emerald-600" : "text-red-500"}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          {isIncome ? (
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2.5}
+              d="M7 11l5-5m0 0l5 5m-5-5v12"
+            />
+          ) : (
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2.5}
+              d="M17 13l-5 5m0 0l-5-5m5 5V6"
+            />
+          )}
+        </svg>
+      </div>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-800 truncate">
+          {txn.description || (isIncome ? "Income" : "Expense")}
+        </p>
+        <p className="text-xs text-gray-400">
+          {txn.source === "manual" ? "Manual" : txn.source} ·{" "}
+          {timeAgo(txn.created_at)}
+        </p>
+      </div>
+
+      {/* Amount */}
+      <span
+        className={`text-sm font-bold flex-shrink-0 ${
+          isIncome ? "text-emerald-600" : "text-red-500"
+        }`}
+      >
+        {isIncome ? "+" : "-"}${formatAmount(Math.abs(txn.amount))}
+      </span>
+
+      {/* Actions (only for admins/amin sandou2 section 1) */}
+      {canManage && (
+        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+          <button
+            onClick={() => onEdit(txn)}
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-500 hover:bg-blue-50 transition-all"
+          >
+            <svg
+              className="w-3.5 h-3.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+              />
+            </svg>
+          </button>
+          <button
+            onClick={() => onDelete(txn.id)}
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all"
+          >
+            <svg
+              className="w-3.5 h-3.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
+            </svg>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+export default function MoneyPage() {
+  const user: UserInfo = JSON.parse(localStorage.getItem("user_info") || "{}");
+  const { moneyboxes, transactions, loading, syncing, refetch } =
+    useMoneyboxes();
+  const { canEditMoneybox, canManageTransactions } = usePermissions(user);
+
+  // Moneybox edit modal
+  const [editBoxOpen, setEditBoxOpen] = useState(false);
+  const [selectedBox, setSelectedBox] = useState<Moneybox | null>(null);
+
+  // Transaction modal
+  const [txnModalOpen, setTxnModalOpen] = useState(false);
+  const [editingTxn, setEditingTxn] = useState<MoneyTransaction | null>(null);
+  const [txnMoneyboxId, setTxnMoneyboxId] = useState<number>(0);
+
+  // Expanded section (which card shows transactions)
+  const [expandedSection, setExpandedSection] = useState<number | null>(null);
 
   const totalAmount = moneyboxes.reduce(
-    (sum, box) => sum + parseFloat(String(box.amount || 0)),
+    (sum: number, box: Moneybox) => sum + parseFloat(String(box.amount || 0)),
     0,
   );
 
+  const openAddTxn = (moneyboxId: number) => {
+    setEditingTxn(null);
+    setTxnMoneyboxId(moneyboxId);
+    setTxnModalOpen(true);
+  };
+
+  const openEditTxn = (txn: MoneyTransaction) => {
+    setEditingTxn(txn);
+    setTxnMoneyboxId(txn.moneybox_id);
+    setTxnModalOpen(true);
+  };
+
+  const deleteTxn = async (id: number) => {
+    if (!confirm("Delete this transaction?")) return;
+    try {
+      await api.delete(`/transactions/${id}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        },
+      });
+      refetch();
+    } catch {
+      alert("Failed to delete transaction");
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gray-50 font-sans">
       <Navbar />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
-        {/* Header */}
-        <div className="mb-8 sm:mb-12">
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-2">
-            Moneyboxes
-          </h1>
-          <p className="text-sm sm:text-base text-gray-600">
-            Track and manage section funds
-          </p>
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+        {/* ── Header ── */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
+              Treasury
+            </h1>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Section funds & transactions
+            </p>
+          </div>
+          {syncing && (
+            <span className="flex items-center gap-1.5 text-xs text-gray-400">
+              <span className="inline-block w-3.5 h-3.5 border-2 border-gray-300 border-t-gray-500 rounded-full animate-spin" />
+              Syncing…
+            </span>
+          )}
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="text-center">
-              <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-indigo-600 border-r-transparent mb-4"></div>
-              <p className="text-gray-600">Loading moneyboxes...</p>
-            </div>
+          <div className="flex flex-col items-center justify-center py-32 gap-3">
+            <div className="w-10 h-10 border-4 border-gray-200 border-t-gray-700 rounded-full animate-spin" />
+            <p className="text-sm text-gray-500">Loading treasury…</p>
           </div>
         ) : (
           <>
-            {/* Total Summary Card */}
-            <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-2xl shadow-2xl p-6 sm:p-8 mb-8 sm:mb-10">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="text-center sm:text-left">
-                  <p className="text-white/90 text-sm sm:text-base font-medium mb-1">
-                    Total Balance
-                  </p>
-                  <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white">
-                    ${totalAmount.toFixed(2)}
-                  </h2>
-                </div>
-                <div className="flex items-center gap-3">
-                  <svg
-                    className="w-16 h-16 sm:w-20 sm:h-20 text-white/20"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.31-8.86c-1.77-.45-2.34-.94-2.34-1.67 0-.84.79-1.43 2.1-1.43 1.38 0 1.9.66 1.94 1.64h1.71c-.05-1.34-.87-2.57-2.49-2.97V5H10.9v1.69c-1.51.32-2.72 1.3-2.72 2.81 0 1.79 1.49 2.69 3.66 3.21 1.95.46 2.34 1.15 2.34 1.87 0 .53-.39 1.39-2.1 1.39-1.6 0-2.23-.72-2.32-1.64H8.04c.1 1.7 1.36 2.66 2.86 2.97V19h2.34v-1.67c1.52-.29 2.72-1.16 2.73-2.77-.01-2.2-1.9-2.96-3.66-3.42z" />
-                  </svg>
-                </div>
+            {/* ── Total Card ── */}
+            <div className="relative overflow-hidden bg-gray-900 rounded-2xl p-6 sm:p-8 mb-6 shadow-xl">
+              {/* subtle grid pattern */}
+              <div
+                className="absolute inset-0 opacity-5"
+                style={{
+                  backgroundImage: `repeating-linear-gradient(0deg,transparent,transparent 24px,white 24px,white 25px),repeating-linear-gradient(90deg,transparent,transparent 24px,white 24px,white 25px)`,
+                }}
+              />
+              <div className="relative">
+                <p className="text-gray-400 text-xs font-semibold uppercase tracking-widest mb-2">
+                  Total Balance
+                </p>
+                <p className="text-4xl sm:text-5xl font-bold text-white tabular-nums">
+                  ${formatAmount(totalAmount)}
+                </p>
+                <p className="text-gray-500 text-sm mt-2">
+                  Across {moneyboxes.length} section
+                  {moneyboxes.length !== 1 ? "s" : ""}
+                </p>
               </div>
             </div>
 
-            {/* Moneyboxes Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 lg:gap-8">
-              {moneyboxes.map((box) => {
+            {/* ── Section Cards ── */}
+            <div className="grid grid-cols-1 gap-4">
+              {moneyboxes.map((box: Moneybox) => {
+                const cfg = SECTION_CONFIG[box.section_id] ?? SECTION_CONFIG[1];
                 const canEdit = canEditMoneybox(box);
-                const gradient = sectionThemes[box.section_id];
-                const sectionName = sectionNames[box.section_id];
                 const amount = parseFloat(String(box.amount || 0));
+                const isExpanded = expandedSection === box.section_id;
+                const boxTxns = transactions
+                  .filter((t: MoneyTransaction) => t.moneybox_id === box.id)
+                  .sort(
+                    (a: MoneyTransaction, b: MoneyTransaction) =>
+                      new Date(b.created_at).getTime() -
+                      new Date(a.created_at).getTime(),
+                  );
+
+                const income = boxTxns
+                  .filter((t: MoneyTransaction) => t.type === "income")
+                  .reduce(
+                    (s: number, t: MoneyTransaction) => s + Math.abs(t.amount),
+                    0,
+                  );
+                const expense = boxTxns
+                  .filter((t: MoneyTransaction) => t.type === "expense")
+                  .reduce(
+                    (s: number, t: MoneyTransaction) => s + Math.abs(t.amount),
+                    0,
+                  );
 
                 return (
                   <div
                     key={box.id}
-                    className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2"
+                    className={`bg-white rounded-2xl border ${cfg.border} shadow-sm overflow-hidden transition-all duration-300`}
                   >
-                    {/* Card Header */}
+                    {/* Card top accent */}
                     <div
-                      className={`bg-gradient-to-r ${gradient} p-6 sm:p-8 text-center relative overflow-hidden`}
-                    >
-                      {/* Decorative circles */}
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-12 -mt-12"></div>
-                      <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/10 rounded-full -ml-8 -mb-8"></div>
+                      className={`h-1 w-full bg-gradient-to-r ${cfg.accent}`}
+                    />
 
-                      <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 relative z-10">
-                        {sectionName}
-                      </h2>
+                    {/* Card Header */}
+                    <div className="p-5 sm:p-6">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span
+                              className={`text-xs font-semibold px-2 py-0.5 rounded-full ${cfg.badge}`}
+                            >
+                              {cfg.name}
+                            </span>
+                          </div>
+                          <p className="text-3xl sm:text-4xl font-bold text-gray-900 tabular-nums mt-2">
+                            ${formatAmount(amount)}
+                          </p>
 
-                      {/* Amount Display */}
-                      <div className="relative z-10">
-                        <div className="inline-flex items-baseline gap-1">
-                          <span className="text-2xl sm:text-3xl font-bold text-white/90">
-                            $
-                          </span>
-                          <span className="text-5xl sm:text-6xl font-bold text-white">
-                            {amount.toFixed(0)}
-                          </span>
-                          <span className="text-2xl sm:text-3xl font-bold text-white/90">
-                            .{(amount % 1).toFixed(2).split(".")[1]}
-                          </span>
+                          {/* Mini income/expense stats */}
+                          {boxTxns.length > 0 && (
+                            <div className="flex gap-4 mt-3">
+                              <span className="text-xs text-emerald-600 font-medium flex items-center gap-1">
+                                <svg
+                                  className="w-3 h-3"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2.5}
+                                    d="M7 11l5-5m0 0l5 5m-5-5v12"
+                                  />
+                                </svg>
+                                +${formatAmount(income)}
+                              </span>
+                              <span className="text-xs text-red-500 font-medium flex items-center gap-1">
+                                <svg
+                                  className="w-3 h-3"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2.5}
+                                    d="M17 13l-5 5m0 0l-5-5m5 5V6"
+                                  />
+                                </svg>
+                                -${formatAmount(expense)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex flex-col gap-2 flex-shrink-0">
+                          {canEdit && (
+                            <button
+                              onClick={() => {
+                                setSelectedBox(box);
+                                setEditBoxOpen(true);
+                              }}
+                              className={`px-3 py-1.5 text-xs font-semibold rounded-lg ${cfg.soft} ${cfg.text} border ${cfg.border} hover:opacity-80 transition-all flex items-center gap-1`}
+                            >
+                              <svg
+                                className="w-3.5 h-3.5"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                />
+                              </svg>
+                              Edit
+                            </button>
+                          )}
+                          <button
+                            onClick={() =>
+                              setExpandedSection(
+                                isExpanded ? null : box.section_id,
+                              )
+                            }
+                            className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all flex items-center gap-1"
+                          >
+                            {isExpanded ? (
+                              <>
+                                <svg
+                                  className="w-3.5 h-3.5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M5 15l7-7 7 7"
+                                  />
+                                </svg>
+                                Hide
+                              </>
+                            ) : (
+                              <>
+                                <svg
+                                  className="w-3.5 h-3.5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 9l-7 7-7-7"
+                                  />
+                                </svg>
+                                Transactions{" "}
+                                {boxTxns.length > 0 && `(${boxTxns.length})`}
+                              </>
+                            )}
+                          </button>
                         </div>
                       </div>
                     </div>
 
-                    {/* Card Body */}
-                    <div className="p-5 sm:p-6">
-                      {canEdit ? (
-                        <button
-                          onClick={() => {
-                            setSelectedBox(box);
-                            setModalOpen(true);
-                          }}
-                          className={`w-full px-6 py-3 sm:py-3.5 rounded-xl text-white font-semibold bg-gradient-to-r ${gradient} hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200 active:scale-[0.98] text-sm sm:text-base flex items-center justify-center gap-2`}
-                        >
-                          <svg
-                            className="w-5 h-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                            />
-                          </svg>
-                          Edit Amount
-                        </button>
-                      ) : (
-                        <div className="w-full px-6 py-3 sm:py-3.5 rounded-xl text-gray-500 bg-gray-100 border-2 border-gray-200 text-center font-medium text-sm sm:text-base flex items-center justify-center gap-2">
-                          <svg
-                            className="w-5 h-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                            />
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                            />
-                          </svg>
-                          View Only
+                    {/* Transactions Panel */}
+                    {isExpanded && (
+                      <div
+                        className={`border-t ${cfg.border} ${cfg.soft} px-5 sm:px-6 pb-5`}
+                      >
+                        {/* Transactions header */}
+                        <div className="flex items-center justify-between py-4">
+                          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                            Transactions
+                          </span>
+                          {canManageTransactions && (
+                            <button
+                              onClick={() => openAddTxn(box.id)}
+                              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-gradient-to-r ${cfg.accent} text-white shadow-sm hover:opacity-90 transition-all`}
+                            >
+                              <svg
+                                className="w-3.5 h-3.5"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2.5}
+                                  d="M12 4v16m8-8H4"
+                                />
+                              </svg>
+                              Add
+                            </button>
+                          )}
                         </div>
-                      )}
-                    </div>
+
+                        {/* Transaction list */}
+                        <div className="bg-white rounded-xl border border-gray-100 shadow-sm divide-y divide-gray-50 overflow-hidden">
+                          {boxTxns.length === 0 ? (
+                            <div className="py-10 text-center">
+                              <p className="text-sm text-gray-400">
+                                No transactions yet
+                              </p>
+                              {canManageTransactions && (
+                                <button
+                                  onClick={() => openAddTxn(box.id)}
+                                  className={`mt-2 text-xs font-semibold ${cfg.text} hover:underline`}
+                                >
+                                  Add the first one
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="px-4">
+                              {boxTxns.map((txn: MoneyTransaction) => (
+                                <TransactionRow
+                                  key={txn.id}
+                                  txn={txn}
+                                  canManage={canManageTransactions}
+                                  onEdit={openEditTxn}
+                                  onDelete={deleteTxn}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -214,24 +539,30 @@ export default function MoneyPage() {
         )}
       </div>
 
-      {/* Modal */}
+      {/* Edit Moneybox Modal (kept as-is) */}
       {selectedBox && (
         <EditMoneyboxModal
-          open={modalOpen}
+          open={editBoxOpen}
           moneybox={selectedBox}
           onClose={() => {
-            setModalOpen(false);
+            setEditBoxOpen(false);
             setSelectedBox(null);
           }}
-          onSaved={(newAmount) => {
-            setMoneyboxes((prev) =>
-              prev.map((m) =>
-                m.id === selectedBox.id ? { ...m, amount: newAmount } : m,
-              ),
-            );
-          }}
+          onSaved={() => refetch()}
         />
       )}
+
+      {/* Transaction Modal */}
+      <TransactionModal
+        open={txnModalOpen}
+        moneyboxId={txnMoneyboxId}
+        transaction={editingTxn}
+        onClose={() => {
+          setTxnModalOpen(false);
+          setEditingTxn(null);
+        }}
+        onSaved={refetch}
+      />
     </div>
   );
 }
