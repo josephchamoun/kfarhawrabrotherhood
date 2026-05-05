@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   FaSearch,
   FaStore,
@@ -13,14 +13,12 @@ import api from "../api/api";
 import Navbar from "../components/Navbar";
 import AddShopModal from "../components/AddShopModal";
 import type { Shop } from "../types";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export default function ShopsPage() {
-  const [allShops, setAllShops] = useState<Shop[]>([]);
-  const [shops, setShops] = useState<Shop[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [openModal, setOpenModal] = useState(false);
+  const queryClient = useQueryClient();
 
   const user = JSON.parse(localStorage.getItem("user_info") || "{}");
   const canAddShop =
@@ -36,38 +34,34 @@ export default function ShopsPage() {
     );
 
   // Fetch all shops once
-  useEffect(() => {
-    const fetchShops = async () => {
-      setLoading(true);
-      setError("");
-      try {
-        const res = await api.get("/shops", {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-          },
-        });
-        setAllShops(res.data);
-        setShops(res.data);
-      } catch {
-        setError("Failed to load shops");
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchShops = async (): Promise<Shop[]> => {
+    const res = await api.get("/shops", {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+      },
+    });
 
-    fetchShops();
-  }, []);
+    return res.data;
+  };
+
+  const {
+    data: allShops = [],
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["shops"],
+    queryFn: fetchShops,
+  });
 
   // Frontend search/filter
-  useEffect(() => {
-    const filtered = allShops.filter(
-      (shop) =>
-        shop.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        shop.place.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (shop.phone_number || "").includes(searchTerm),
-    );
-    setShops(filtered);
-  }, [searchTerm, allShops]);
+
+  const shops = allShops.filter(
+    (shop: { name: string; place: string; phone_number: string }) =>
+      shop.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      shop.place.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (shop.phone_number || "").includes(searchTerm),
+  );
+
   const handleDeleteShop = async (shopId: number) => {
     const confirmed = window.confirm(
       "Are you sure you want to delete this shop? This action cannot be undone.",
@@ -83,8 +77,7 @@ export default function ShopsPage() {
       });
 
       // Remove shop from state (both lists)
-      setAllShops((prev) => prev.filter((s) => s.id !== shopId));
-      setShops((prev) => prev.filter((s) => s.id !== shopId));
+      queryClient.invalidateQueries({ queryKey: ["shops"] });
     } catch (err) {
       alert("Failed to delete shop. Please try again.");
     }
@@ -126,7 +119,7 @@ export default function ShopsPage() {
           </div>
 
           {/* Results count */}
-          {!loading && (
+          {!isLoading && (
             <p className="mt-4 text-gray-600 text-sm">
               {shops.length === 0
                 ? "No shops found"
@@ -136,7 +129,7 @@ export default function ShopsPage() {
         </div>
 
         {/* Loading State */}
-        {loading && (
+        {isLoading && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <div
@@ -156,12 +149,12 @@ export default function ShopsPage() {
         {error && (
           <div className="bg-red-50 border-l-4 border-red-600 text-red-700 p-6 rounded-xl shadow-sm">
             <p className="font-semibold">Error</p>
-            <p>{error}</p>
+            <p>{error.message}</p>
           </div>
         )}
 
         {/* Shops Grid */}
-        {!loading && !error && (
+        {!isLoading && !error && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {shops.map((shop) => (
               <div
@@ -283,7 +276,7 @@ export default function ShopsPage() {
         )}
 
         {/* Empty State */}
-        {!loading && !error && shops.length === 0 && (
+        {!isLoading && !error && shops.length === 0 && (
           <div className="text-center py-16">
             <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <FaStore className="text-5xl text-gray-400" />
@@ -312,9 +305,8 @@ export default function ShopsPage() {
       <AddShopModal
         open={openModal}
         onClose={() => setOpenModal(false)}
-        onCreated={(shop: Shop) => {
-          setAllShops([shop, ...allShops]);
-          setShops([shop, ...shops]);
+        onCreated={() => {
+          queryClient.invalidateQueries({ queryKey: ["shops"] });
         }}
       />
     </div>

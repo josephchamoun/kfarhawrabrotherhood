@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   FaSearch,
   FaUser,
@@ -13,13 +13,12 @@ import Navbar from "../components/Navbar";
 import AddContactModal from "../components/AddContactModal";
 import type { Contact } from "../types";
 
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+
 export default function ContactsPage() {
-  const [allContacts, setAllContacts] = useState<Contact[]>([]);
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [openModal, setOpenModal] = useState(false);
+  const queryClient = useQueryClient();
 
   const user = JSON.parse(localStorage.getItem("user_info") || "{}");
 
@@ -36,38 +35,33 @@ export default function ContactsPage() {
     );
 
   // Fetch contacts
-  useEffect(() => {
-    const fetchContacts = async () => {
-      setLoading(true);
-      setError("");
-      try {
-        const res = await api.get("/contacts", {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-          },
-        });
-        setAllContacts(res.data);
-        setContacts(res.data);
-      } catch {
-        setError("Failed to load contacts");
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchContacts = async (): Promise<Contact[]> => {
+    const res = await api.get("/contacts", {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+      },
+    });
 
-    fetchContacts();
-  }, []);
+    return res.data;
+  };
+
+  const {
+    data: allContacts = [],
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["contacts"],
+    queryFn: fetchContacts,
+  });
 
   // Search filter
-  useEffect(() => {
-    const filtered = allContacts.filter(
-      (contact) =>
-        contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        contact.town_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        contact.phone.includes(searchTerm),
-    );
-    setContacts(filtered);
-  }, [searchTerm, allContacts]);
+  const contacts = allContacts.filter(
+    (contact: { name: string; town_name: string; phone: string | string[] }) =>
+      contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      contact.town_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      contact.phone.includes(searchTerm),
+  );
+
   const handleDeleteContact = async (contactId: number) => {
     const confirmed = window.confirm(
       "Are you sure you want to delete this contact?",
@@ -82,13 +76,12 @@ export default function ContactsPage() {
         },
       });
 
-      setAllContacts((prev) => prev.filter((c) => c.id !== contactId));
-      setContacts((prev) => prev.filter((c) => c.id !== contactId));
+      // 🔥 tell React Query: "data changed"
+      queryClient.invalidateQueries({ queryKey: ["contacts"] });
     } catch {
       alert("Failed to delete contact");
     }
   };
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <Navbar />
@@ -121,7 +114,7 @@ export default function ContactsPage() {
             )}
           </div>
 
-          {!loading && (
+          {!isLoading && (
             <p className="mt-4 text-gray-600 text-sm">
               {contacts.length === 0
                 ? "No contacts found"
@@ -133,7 +126,7 @@ export default function ContactsPage() {
         </div>
 
         {/* Loading */}
-        {loading && (
+        {isLoading && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <div
@@ -149,14 +142,14 @@ export default function ContactsPage() {
         )}
 
         {/* Error */}
-        {error && (
+        {error instanceof Error && (
           <div className="bg-red-50 border-l-4 border-red-600 text-red-700 p-6 rounded-xl">
-            {error}
+            {error.message}
           </div>
         )}
 
         {/* Contacts Grid */}
-        {!loading && !error && (
+        {!isLoading && !error && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {contacts.map((contact) => (
               <div
@@ -254,7 +247,7 @@ export default function ContactsPage() {
         )}
 
         {/* Empty */}
-        {!loading && !error && contacts.length === 0 && (
+        {!isLoading && !error && contacts.length === 0 && (
           <div className="text-center py-16">
             <FaUser className="text-6xl text-gray-400 mx-auto mb-6" />
             <h3 className="text-2xl font-bold text-gray-900">
@@ -275,9 +268,8 @@ export default function ContactsPage() {
       <AddContactModal
         open={openModal}
         onClose={() => setOpenModal(false)}
-        onCreated={(contact: Contact) => {
-          setAllContacts([contact, ...allContacts]);
-          setContacts([contact, ...contacts]);
+        onCreated={() => {
+          queryClient.invalidateQueries({ queryKey: ["contacts"] });
         }}
       />
     </div>
