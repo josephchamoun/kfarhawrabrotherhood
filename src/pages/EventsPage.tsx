@@ -104,6 +104,21 @@ export default function EventsPage() {
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
   const downloadMenuRef = useRef<HTMLDivElement>(null);
 
+  const [isGuest, setIsGuest] = useState(!localStorage.getItem("access_token"));
+
+  useEffect(() => {
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
+
+    api
+      .get("/me", { headers: { Authorization: `Bearer ${token}` } })
+      .then(() => setIsGuest(false))
+      .catch(() => {
+        setIsGuest(true);
+        localStorage.removeItem("access_token");
+      });
+  }, []);
+
   const LOCK_AFTER_DAYS = 30;
   const WARNING_DAYS = 30;
 
@@ -750,123 +765,147 @@ export default function EventsPage() {
                 </span>
               )}
             </div>
-            <p className="text-sm text-gray-500 mt-1">
-              Manage and track brotherhood events and finances
-            </p>
+            {!isGuest && (
+              <p className="text-sm text-gray-500 mt-1">
+                Manage and track brotherhood events and finances
+              </p>
+            )}
+            {isGuest && (
+              <p className="text-sm text-gray-500 mt-1">
+                You have to login to view and manage events. Please contact your
+                section leader for access.
+              </p>
+            )}
           </div>
 
           {/* ── Header actions ── */}
           <div className="flex items-center gap-2">
             {/* Download dropdown */}
-            <div className="relative" ref={downloadMenuRef}>
-              <button
-                onClick={() => setShowDownloadMenu((v) => !v)}
-                className="inline-flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm border border-gray-200"
-              >
-                <ArrowDownTrayIcon className="w-4 h-4" />
-                Export
-                <ChevronDownIcon className="w-3.5 h-3.5 text-gray-400" />
-              </button>
+            {!isGuest && (
+              <div className="relative" ref={downloadMenuRef}>
+                <button
+                  onClick={() => setShowDownloadMenu((v) => !v)}
+                  className="inline-flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm border border-gray-200"
+                >
+                  <ArrowDownTrayIcon className="w-4 h-4" />
+                  Export
+                  <ChevronDownIcon className="w-3.5 h-3.5 text-gray-400" />
+                </button>
 
-              {showDownloadMenu && (
-                <>
-                  {/* Backdrop to close on outside click */}
-                  <div
-                    className="fixed inset-0 z-10"
-                    onClick={() => setShowDownloadMenu(false)}
-                  />
-                  <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-lg z-20 overflow-hidden">
-                    <button
-                      onClick={handleDownloadPDF}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
-                    >
-                      <span className="text-base">📄</span>
-                      <div>
-                        <p className="font-semibold">Save as PDF</p>
-                        <p className="text-xs text-gray-400">
-                          Opens print dialog
-                        </p>
-                      </div>
-                    </button>
-                    <div className="h-px bg-gray-100" />
-                    <button
-                      onClick={handleDownloadCSV}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
-                    >
-                      <span className="text-base">📊</span>
-                      <div>
-                        <p className="font-semibold">Save as CSV</p>
-                        <p className="text-xs text-gray-400">
-                          Opens in Excel / Sheets
-                        </p>
-                      </div>
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
+                {showDownloadMenu && (
+                  <>
+                    {/* Backdrop to close on outside click */}
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setShowDownloadMenu(false)}
+                    />
+                    <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-lg z-20 overflow-hidden">
+                      <button
+                        onClick={handleDownloadPDF}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
+                      >
+                        <span className="text-base">📄</span>
+                        <div>
+                          <p className="font-semibold">Save as PDF</p>
+                          <p className="text-xs text-gray-400">
+                            Opens print dialog
+                          </p>
+                        </div>
+                      </button>
+                      <div className="h-px bg-gray-100" />
+                      <button
+                        onClick={handleDownloadCSV}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
+                      >
+                        <span className="text-base">📊</span>
+                        <div>
+                          <p className="font-semibold">Save as CSV</p>
+                          <p className="text-xs text-gray-400">
+                            Opens in Excel / Sheets
+                          </p>
+                        </div>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
 
             {canShowAddButton && (
-              <button
-                onClick={() => setIsAddOpen(true)}
-                className="inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors shadow-sm"
-              >
-                <PlusIcon className="w-4 h-4" />
-                Add Event
-              </button>
+              <>
+                {/* Desktop */}
+                <button
+                  onClick={() => setIsAddOpen(true)}
+                  className="hidden sm:inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors shadow-sm"
+                >
+                  <PlusIcon className="w-4 h-4" />
+                  Add Event
+                </button>
+
+                {/* Mobile — icon only */}
+                <button
+                  onClick={() => setIsAddOpen(true)}
+                  className="sm:hidden w-9 h-9 flex items-center justify-center bg-gray-900 hover:bg-gray-700 text-white rounded-xl transition-colors shadow-sm"
+                  title="Add Event"
+                >
+                  <PlusIcon className="w-4 h-4" />
+                </button>
+              </>
             )}
           </div>
         </div>
 
         {/* ── Stats row ── */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          {[
-            {
-              label: "Revenue",
-              value: totalRevenue,
-              color: "text-emerald-600",
-              bg: "bg-emerald-50",
-              border: "border-emerald-100",
-              icon: <BanknotesIcon className="w-4 h-4 text-emerald-500" />,
-            },
-            {
-              label: "Spent",
-              value: totalSpent,
-              color: "text-rose-600",
-              bg: "bg-rose-50",
-              border: "border-rose-100",
-              icon: <CurrencyDollarIcon className="w-4 h-4 text-rose-500" />,
-            },
-            {
-              label: "Net Profit",
-              value: totalProfit,
-              color: totalProfit >= 0 ? "text-blue-600" : "text-orange-600",
-              bg: totalProfit >= 0 ? "bg-blue-50" : "bg-orange-50",
-              border:
-                totalProfit >= 0 ? "border-blue-100" : "border-orange-100",
-              icon: <CalendarIcon className="w-4 h-4 text-blue-500" />,
-            },
-          ].map(({ label, value, color, bg, border, icon }) => (
-            <div
-              key={label}
-              className={`${bg} ${border} border rounded-2xl px-5 py-4 flex items-center justify-between`}
-            >
-              <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                  {label}
-                </p>
-                <p className={`text-2xl font-bold ${color}`}>
-                  ${value.toFixed(2)}
-                </p>
-              </div>
+        {!isGuest && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            {[
+              {
+                label: "Revenue",
+                value: totalRevenue,
+                color: "text-emerald-600",
+                bg: "bg-emerald-50",
+                border: "border-emerald-100",
+                icon: <BanknotesIcon className="w-4 h-4 text-emerald-500" />,
+              },
+              {
+                label: "Spent",
+                value: totalSpent,
+                color: "text-rose-600",
+                bg: "bg-rose-50",
+                border: "border-rose-100",
+                icon: <CurrencyDollarIcon className="w-4 h-4 text-rose-500" />,
+              },
+              {
+                label: "Net Profit",
+                value: totalProfit,
+                color: totalProfit >= 0 ? "text-blue-600" : "text-orange-600",
+                bg: totalProfit >= 0 ? "bg-blue-50" : "bg-orange-50",
+                border:
+                  totalProfit >= 0 ? "border-blue-100" : "border-orange-100",
+                icon: <CalendarIcon className="w-4 h-4 text-blue-500" />,
+              },
+            ].map(({ label, value, color, bg, border, icon }) => (
               <div
-                className={`w-9 h-9 ${bg} rounded-xl flex items-center justify-center border ${border}`}
+                key={label}
+                className={`${bg} ${border} border rounded-2xl px-5 py-4 flex items-center justify-between`}
               >
-                {icon}
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                    {label}
+                  </p>
+                  <p className={`text-2xl font-bold ${color}`}>
+                    ${value.toFixed(2)}
+                  </p>
+                </div>
+                <div
+                  className={`w-9 h-9 ${bg} rounded-xl flex items-center justify-center border ${border}`}
+                >
+                  {icon}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {/* ── Search + filters ── */}
         <div className="bg-white border border-gray-200 rounded-2xl p-4 mb-8 shadow-sm">
@@ -1108,61 +1147,67 @@ export default function EventsPage() {
                           )}
                         </div>
                         {/* Per-event export dropdown */}
-                        <div className="relative">
-                          <button
-                            onClick={() =>
-                              setOpenExportMenu(
-                                openExportMenu === event.id ? null : event.id,
-                              )
-                            }
-                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-400 hover:text-blue-600 transition-colors"
-                            title="Export Event"
-                          >
-                            <ArrowDownTrayIcon className="w-3.5 h-3.5" />
-                          </button>
+                        {!isGuest && (
+                          <div className="relative">
+                            <button
+                              onClick={() =>
+                                setOpenExportMenu(
+                                  openExportMenu === event.id ? null : event.id,
+                                )
+                              }
+                              className="w-7 h-7 flex items-center justify-center rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-400 hover:text-blue-600 transition-colors"
+                              title="Export Event"
+                            >
+                              <ArrowDownTrayIcon className="w-3.5 h-3.5" />
+                            </button>
 
-                          {openExportMenu === event.id && (
-                            <>
-                              <div
-                                className="fixed inset-0 z-10"
-                                onClick={() => setOpenExportMenu(null)}
-                              />
-                              <div className="absolute right-0 mt-2 w-44 bg-white border border-gray-200 rounded-xl shadow-lg z-20 overflow-hidden">
-                                <button
-                                  onClick={() => {
-                                    handleDownloadEventPDF(event);
-                                    setOpenExportMenu(null);
-                                  }}
-                                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
-                                >
-                                  <span>📄</span>
-                                  <div>
-                                    <p className="font-semibold">Save as PDF</p>
-                                    <p className="text-xs text-gray-400">
-                                      Opens print dialog
-                                    </p>
-                                  </div>
-                                </button>
-                                <div className="h-px bg-gray-100" />
-                                <button
-                                  onClick={() => {
-                                    handleDownloadEventCSV(event);
-                                    setOpenExportMenu(null);
-                                  }}
-                                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
-                                >
-                                  <span>📊</span>
-                                  <div>
-                                    <p className="font-semibold">Save as CSV</p>
-                                    <p className="text-xs text-gray-400">
-                                      Opens in Excel / Sheets
-                                    </p>
-                                  </div>
-                                </button>
-                              </div>
-                            </>
-                          )}
-                        </div>
+                            {openExportMenu === event.id && (
+                              <>
+                                <div
+                                  className="fixed inset-0 z-10"
+                                  onClick={() => setOpenExportMenu(null)}
+                                />
+                                <div className="absolute right-0 mt-2 w-44 bg-white border border-gray-200 rounded-xl shadow-lg z-20 overflow-hidden">
+                                  <button
+                                    onClick={() => {
+                                      handleDownloadEventPDF(event);
+                                      setOpenExportMenu(null);
+                                    }}
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
+                                  >
+                                    <span>📄</span>
+                                    <div>
+                                      <p className="font-semibold">
+                                        Save as PDF
+                                      </p>
+                                      <p className="text-xs text-gray-400">
+                                        Opens print dialog
+                                      </p>
+                                    </div>
+                                  </button>
+                                  <div className="h-px bg-gray-100" />
+                                  <button
+                                    onClick={() => {
+                                      handleDownloadEventCSV(event);
+                                      setOpenExportMenu(null);
+                                    }}
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
+                                  >
+                                    <span>📊</span>
+                                    <div>
+                                      <p className="font-semibold">
+                                        Save as CSV
+                                      </p>
+                                      <p className="text-xs text-gray-400">
+                                        Opens in Excel / Sheets
+                                      </p>
+                                    </div>
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {/* Row 2: title + date */}
@@ -1226,34 +1271,36 @@ export default function EventsPage() {
                       </div>
 
                       {/* Row 5: financials strip */}
-                      <div className="grid grid-cols-3 divide-x divide-gray-100 bg-gray-50 border border-gray-100 rounded-xl mb-4 overflow-hidden">
-                        <div className="py-2.5 px-3 text-center">
-                          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">
-                            Revenue
-                          </p>
-                          <p className="text-sm font-extrabold text-emerald-600">
-                            ${parseFloat(event.total_revenue).toFixed(2)}
-                          </p>
+                      {!isGuest && (
+                        <div className="grid grid-cols-3 divide-x divide-gray-100 bg-gray-50 border border-gray-100 rounded-xl mb-4 overflow-hidden">
+                          <div className="py-2.5 px-3 text-center">
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">
+                              Revenue
+                            </p>
+                            <p className="text-sm font-extrabold text-emerald-600">
+                              ${parseFloat(event.total_revenue).toFixed(2)}
+                            </p>
+                          </div>
+                          <div className="py-2.5 px-3 text-center">
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">
+                              Spent
+                            </p>
+                            <p className="text-sm font-extrabold text-rose-500">
+                              ${parseFloat(event.total_spent).toFixed(2)}
+                            </p>
+                          </div>
+                          <div className="py-2.5 px-3 text-center">
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">
+                              Profit
+                            </p>
+                            <p
+                              className={`text-sm font-extrabold ${isProfitable ? "text-blue-600" : "text-orange-500"}`}
+                            >
+                              ${profit.toFixed(2)}
+                            </p>
+                          </div>
                         </div>
-                        <div className="py-2.5 px-3 text-center">
-                          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">
-                            Spent
-                          </p>
-                          <p className="text-sm font-extrabold text-rose-500">
-                            ${parseFloat(event.total_spent).toFixed(2)}
-                          </p>
-                        </div>
-                        <div className="py-2.5 px-3 text-center">
-                          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">
-                            Profit
-                          </p>
-                          <p
-                            className={`text-sm font-extrabold ${isProfitable ? "text-blue-600" : "text-orange-500"}`}
-                          >
-                            ${profit.toFixed(2)}
-                          </p>
-                        </div>
-                      </div>
+                      )}
 
                       {/* Row 6: link buttons */}
                       {(event.drive_link || event.photo_link) && (
