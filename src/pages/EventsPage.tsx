@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import AddEventModal from "../components/AddEventModal";
 import EditEventDetailsModal from "../components/EditEventDetailsModal";
@@ -86,7 +86,7 @@ export default function EventsPage() {
     deleteEventOptimistic,
     updateEventOptimistic,
   } = useEvents();
-
+  const [openExportMenu, setOpenExportMenu] = useState<number | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<AppEvent | null>(null);
@@ -140,6 +140,12 @@ export default function EventsPage() {
       .join(",");
     return ids === "1,2,3";
   };
+
+  useEffect(() => {
+    const close = () => setOpenExportMenu(null);
+    window.addEventListener("scroll", close);
+    return () => window.removeEventListener("scroll", close);
+  }, []);
 
   const isAminSer = (event: AppEvent) => {
     if (hasRole(AMIN_SER, 1)) return true;
@@ -506,6 +512,164 @@ export default function EventsPage() {
     const link = document.createElement("a");
     link.href = url;
     link.download = `events_export_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadEventPDF = (event: AppEvent) => {
+    const profit = calculateProfit(event);
+    const isProfitable = profit >= 0;
+    const upcoming = isUpcomingEvent(event.event_date);
+    const locked = isEventLocked(event);
+    const sections = event.sections.map((s: any) => s.name).join(", ");
+    const exportDate = new Date().toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <title>${event.title} — ${exportDate}</title>
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; color: #111; background: white; padding: 32px; }
+        .report-header { margin-bottom: 28px; border-bottom: 2px solid #111; padding-bottom: 16px; }
+        .report-header h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
+        .report-header p { color: #666; font-size: 12px; margin-top: 4px; }
+        .event-card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; }
+        .event-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+        .event-title { font-size: 15px; font-weight: 700; color: #111; }
+        .badges { display: flex; gap: 4px; flex-shrink: 0; }
+        .badge { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 7px; border-radius: 999px; }
+        .badge-upcoming { background: #d1fae5; color: #065f46; }
+        .badge-done { background: #f3f4f6; color: #6b7280; }
+        .badge-locked { background: #1f2937; color: white; }
+        .event-meta { display: flex; gap: 14px; font-size: 11px; color: #6b7280; margin-bottom: 10px; }
+        .event-description { font-size: 12px; color: #374151; line-height: 1.6; margin-bottom: 12px; }
+        .financials { display: flex; border: 1px solid #f3f4f6; border-radius: 8px; overflow: hidden; margin-bottom: 10px; background: #f9fafb; }
+        .fin-item { flex: 1; padding: 8px 12px; text-align: center; }
+        .fin-divider { width: 1px; background: #e5e7eb; }
+        .fin-label { display: block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #9ca3af; margin-bottom: 3px; }
+        .fin-value { font-size: 14px; font-weight: 700; }
+        .revenue { color: #059669; }
+        .spent { color: #e11d48; }
+        .profit { color: #2563eb; }
+        .loss { color: #ea580c; }
+        .notes { font-size: 11px; color: #6b7280; background: #f9fafb; border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; line-height: 1.5; }
+        .links { font-size: 11px; margin-top: 8px; }
+        .links a { color: #2563eb; text-decoration: none; margin-right: 12px; }
+        .footer { margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 12px; font-size: 11px; color: #9ca3af; display: flex; justify-content: space-between; }
+        @media print { body { padding: 16px; } }
+      </style>
+    </head>
+    <body>
+      <div class="report-header">
+        <h1>${event.title}</h1>
+        <p>Exported on ${exportDate}</p>
+      </div>
+      <div class="event-card">
+        <div class="event-title-row">
+          <span class="event-title">${event.title}</span>
+          <div class="badges">
+            <span class="badge ${upcoming ? "badge-upcoming" : "badge-done"}">${upcoming ? "Upcoming" : "Done"}</span>
+            ${locked ? '<span class="badge badge-locked">Locked</span>' : ""}
+          </div>
+        </div>
+        <div class="event-meta">
+          <span>📅 ${new Date(event.event_date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</span>
+          <span>🏷 ${sections}</span>
+        </div>
+        <p class="event-description">${event.description || "—"}</p>
+        <div class="financials">
+          <div class="fin-item">
+            <span class="fin-label">Revenue</span>
+            <span class="fin-value revenue">$${parseFloat(event.total_revenue).toFixed(2)}</span>
+          </div>
+          <div class="fin-divider"></div>
+          <div class="fin-item">
+            <span class="fin-label">Spent</span>
+            <span class="fin-value spent">$${parseFloat(event.total_spent).toFixed(2)}</span>
+          </div>
+          <div class="fin-divider"></div>
+          <div class="fin-item">
+            <span class="fin-label">Net Profit</span>
+            <span class="fin-value ${isProfitable ? "profit" : "loss"}">$${profit.toFixed(2)}</span>
+          </div>
+        </div>
+        ${event.notes ? `<div class="notes"><strong>Notes:</strong> ${event.notes}</div>` : ""}
+        ${
+          event.drive_link || event.photo_link
+            ? `
+          <div class="links">
+            ${event.drive_link ? `<a href="${event.drive_link}">Drive ↗</a>` : ""}
+            ${event.photo_link ? `<a href="${event.photo_link}">Photos ↗</a>` : ""}
+          </div>`
+            : ""
+        }
+      </div>
+      <div class="footer">
+        <span>Brotherhood Events System</span>
+        <span>Generated ${exportDate}</span>
+      </div>
+    </body>
+    </html>
+  `;
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      alert("Please allow pop-ups to export PDF.");
+      return;
+    }
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => printWindow.print(), 500);
+  };
+
+  const handleDownloadEventCSV = (event: AppEvent) => {
+    const profit = calculateProfit(event);
+    const upcoming = isUpcomingEvent(event.event_date);
+    const sections = event.sections.map((s: any) => s.name).join(" / ");
+    const escape = (val: string | null | undefined) => {
+      if (!val) return "";
+      return `"${String(val).replace(/"/g, '""')}"`;
+    };
+    const headers = [
+      "Title",
+      "Date",
+      "Status",
+      "Sections",
+      "Revenue",
+      "Spent",
+      "Profit",
+      "Description",
+      "Notes",
+      "Drive Link",
+      "Photo Link",
+    ];
+    const row = [
+      escape(event.title),
+      new Date(event.event_date).toLocaleDateString("en-US"),
+      upcoming ? "Upcoming" : "Done",
+      escape(sections),
+      parseFloat(event.total_revenue).toFixed(2),
+      parseFloat(event.total_spent).toFixed(2),
+      profit.toFixed(2),
+      escape(event.description),
+      escape(event.notes),
+      escape(event.drive_link),
+      escape(event.photo_link),
+    ].join(",");
+    const csvContent = [headers.join(","), row].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${event.title.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -893,13 +1057,16 @@ export default function EventsPage() {
                           )}
                           {locked && (
                             <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest bg-gray-800 text-white px-2.5 py-1 rounded-full">
-                              🔒 Locked
+                              🔒
+                              <span className="ml-1 text-gray-300 text-[8px] font-normal uppercase tracking-widest">
+                                Cannot be edited anymore
+                              </span>
                             </span>
                           )}
                           {!locked && warning && (
                             <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full">
                               ⏳ {getDaysRemainingBeforeLock(event.event_date)}d
-                              left
+                              left to edit
                             </span>
                           )}
                         </div>
@@ -938,6 +1105,62 @@ export default function EventsPage() {
                             >
                               <TrashIcon className="w-3.5 h-3.5" />
                             </button>
+                          )}
+                        </div>
+                        {/* Per-event export dropdown */}
+                        <div className="relative">
+                          <button
+                            onClick={() =>
+                              setOpenExportMenu(
+                                openExportMenu === event.id ? null : event.id,
+                              )
+                            }
+                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-400 hover:text-blue-600 transition-colors"
+                            title="Export Event"
+                          >
+                            <ArrowDownTrayIcon className="w-3.5 h-3.5" />
+                          </button>
+
+                          {openExportMenu === event.id && (
+                            <>
+                              <div
+                                className="fixed inset-0 z-10"
+                                onClick={() => setOpenExportMenu(null)}
+                              />
+                              <div className="absolute right-0 mt-2 w-44 bg-white border border-gray-200 rounded-xl shadow-lg z-20 overflow-hidden">
+                                <button
+                                  onClick={() => {
+                                    handleDownloadEventPDF(event);
+                                    setOpenExportMenu(null);
+                                  }}
+                                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
+                                >
+                                  <span>📄</span>
+                                  <div>
+                                    <p className="font-semibold">Save as PDF</p>
+                                    <p className="text-xs text-gray-400">
+                                      Opens print dialog
+                                    </p>
+                                  </div>
+                                </button>
+                                <div className="h-px bg-gray-100" />
+                                <button
+                                  onClick={() => {
+                                    handleDownloadEventCSV(event);
+                                    setOpenExportMenu(null);
+                                  }}
+                                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
+                                >
+                                  <span>📊</span>
+                                  <div>
+                                    <p className="font-semibold">Save as CSV</p>
+                                    <p className="text-xs text-gray-400">
+                                      Opens in Excel / Sheets
+                                    </p>
+                                  </div>
+                                </button>
+                              </div>
+                            </>
                           )}
                         </div>
                       </div>

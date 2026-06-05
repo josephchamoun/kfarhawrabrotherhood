@@ -25,7 +25,7 @@ export default function AppRouter() {
           <Route path="/users" element={<UsersPage />} />
           <Route path="/users/:id" element={<UserProfilePage />} />
           <Route path="/profile" element={<MyProfilePage />} />
-          <Route path="/events" element={<EventsPage />} />
+
           <Route path="/shops" element={<ShopsPage />} />
           <Route path="/chabiba" element={<ChabibaPage />} />
           <Route path="/forsan" element={<ForsanPage />} />
@@ -38,6 +38,7 @@ export default function AppRouter() {
         </Route>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/events" element={<EventsPage />} />
       </Routes>
     </BrowserRouter>
   );

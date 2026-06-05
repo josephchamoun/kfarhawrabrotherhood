@@ -2,8 +2,6 @@ import { Link } from "react-router-dom";
 import {
   FaBible,
   FaChurch,
-  FaUsers,
-  FaStore,
   FaHandsHelping,
   FaCalendarAlt,
 } from "react-icons/fa";
@@ -338,8 +336,6 @@ export default function HomePage() {
             >
               {[
                 { to: "/events", icon: <FaCalendarAlt />, label: "Events" },
-                { to: "/shops", icon: <FaStore />, label: "Shops" },
-                { to: "/users", icon: <FaUsers />, label: "Members" },
               ].map(({ to, icon, label }) => (
                 <Link key={to} to={to} className="nav-link">
                   {icon} {label}
