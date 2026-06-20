@@ -265,8 +265,11 @@ export default function EventsPage() {
     return event.sections.some((s) => isPresidentOrNe2b(s.id));
   };
 
-  const canEditDetailsWithDate = (event: AppEvent) =>
-    !isEventLocked(event) && canEditDetails(event);
+  const canEditDetailsWithDate = (event: AppEvent) => {
+    if (isHighAdmin()) return true;
+
+    return !isEventLocked(event) && canEditDetails(event);
+  };
   const canEditFinancialsWithDate = (event: AppEvent) =>
     !isEventLocked(event) && canEditFinancials(event);
   const canDeleteWithDate = (event: AppEvent) => {
